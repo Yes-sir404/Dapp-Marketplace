@@ -1,0 +1,187 @@
+// src/App.tsx
+import React, { useState } from "react";
+import { ProductList } from "./components/test/ProductList";
+import { CreateProduct } from "./components/test/CreateProduct";
+import { MarketplaceStatsComponent } from "./components/test/MarketplaceStats";
+
+// Assuming you already have wallet connection logic
+// If not, here's a simple example:
+
+const WalletConnection: React.FC<{ onConnect: () => void }> = ({
+  onConnect,
+}) => {
+  const [account, setAccount] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const connectWallet = async () => {
+    setIsConnecting(true);
+    try {
+      if (typeof window.ethereum !== "undefined") {
+        // Request account access
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
+
+        setAccount(accounts[0]);
+        onConnect(); // Notify parent component
+        console.log("✅ Wallet connected:", accounts[0]);
+      } else {
+        alert("Please install MetaMask or another Web3 wallet");
+      }
+    } catch (error) {
+      console.error("❌ Failed to connect wallet:", error);
+      alert("Failed to connect wallet");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const disconnectWallet = () => {
+    setAccount(null);
+  };
+
+  if (!account) {
+    return (
+      <div className="text-center p-8">
+        <h2 className="text-2xl font-bold mb-4">Connect Your Wallet</h2>
+        <p className="text-gray-600 mb-6">
+          Connect your wallet to start buying and selling digital products
+        </p>
+        <button
+          onClick={connectWallet}
+          disabled={isConnecting}
+          className="bg-blue-500 text-white px-6 py-3 rounded-lg text-lg hover:bg-blue-600 disabled:bg-gray-400"
+        >
+          {isConnecting ? "Connecting..." : "🦊 Connect MetaMask"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <span className="text-green-800 font-medium">
+            ✅ Wallet Connected
+          </span>
+          <div className="text-sm text-green-600">
+            {account.slice(0, 6)}...{account.slice(-4)}
+          </div>
+        </div>
+        <button
+          onClick={disconnectWallet}
+          className="text-red-600 hover:text-red-800 text-sm"
+        >
+          Disconnect
+        </button>
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [activeTab, setActiveTab] = useState<"browse" | "create" | "stats">(
+    "browse"
+  );
+
+  // Check if wallet is already connected on app load
+  React.useEffect(() => {
+    checkWalletConnection();
+  }, []);
+
+  const checkWalletConnection = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        const accounts = await window.ethereum.request({
+          method: "eth_accounts",
+        });
+        if (accounts.length > 0) {
+          setIsWalletConnected(true);
+        }
+      } catch (error) {
+        console.error("Failed to check wallet connection:", error);
+      }
+    }
+  };
+
+  const handleWalletConnect = () => {
+    setIsWalletConnected(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-4">
+          <h1 className="text-3xl font-bold text-center text-gray-800">
+            🏪 Digital Marketplace
+          </h1>
+          <p className="text-center text-gray-600 mt-2">
+            Buy and sell digital products with cryptocurrency
+          </p>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-6">
+        {/* Wallet Connection */}
+        <WalletConnection onConnect={handleWalletConnect} />
+
+        {isWalletConnected && (
+          <>
+            {/* Navigation Tabs */}
+            <div className="flex justify-center mb-8">
+              <nav className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
+                <button
+                  onClick={() => setActiveTab("browse")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === "browse"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  🛒 Browse Products
+                </button>
+                <button
+                  onClick={() => setActiveTab("create")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === "create"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  ➕ Create Product
+                </button>
+                <button
+                  onClick={() => setActiveTab("stats")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === "stats"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  📊 Statistics
+                </button>
+              </nav>
+            </div>
+
+            {/* Content Area */}
+            <main>
+              {activeTab === "browse" && <ProductList />}
+              {activeTab === "create" && <CreateProduct />}
+              {activeTab === "stats" && <MarketplaceStatsComponent />}
+            </main>
+          </>
+        )}
+
+        {/* Footer */}
+        <footer className="mt-12 text-center text-gray-500 text-sm">
+          <p>🔒 Secure blockchain marketplace powered by Ethereum</p>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+export default App;

@@ -1,0 +1,1849 @@
+{
+  "contracts": [
+    {
+      "contractName": "Marketplace",
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "network": {
+        "name": "localhost",
+        "chainId": "31337"
+      },
+      "abi": [
+        {
+          "type": "constructor",
+          "stateMutability": "undefined",
+          "payable": false,
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "EnforcedPause",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ExpectedPause",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "OwnableInvalidOwner",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "owner"
+            }
+          ]
+        },
+        {
+          "type": "error",
+          "name": "OwnableUnauthorizedAccount",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account"
+            }
+          ]
+        },
+        {
+          "type": "error",
+          "name": "ReentrancyGuardReentrantCall",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "FeesWithdrawn",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "owner",
+              "indexed": false
+            },
+            {
+              "type": "uint256",
+              "name": "amount",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplaceFeeUpdated",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "newFeePercent",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplacePaused",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplaceUnpaused",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "OwnershipTransferred",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "previousOwner",
+              "indexed": true
+            },
+            {
+              "type": "address",
+              "name": "newOwner",
+              "indexed": true
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "Paused",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "ProductCreated",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "id",
+              "indexed": false
+            },
+            {
+              "type": "string",
+              "name": "name",
+              "indexed": false
+            },
+            {
+              "type": "uint256",
+              "name": "price",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "seller",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "ProductPurchased",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "id",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "seller",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "buyer",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "Unpaused",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "MAX_FEE_PERCENT",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "MAX_PRICE",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "collectedFees",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "createProduct",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "string",
+              "name": "_name"
+            },
+            {
+              "type": "string",
+              "name": "_description"
+            },
+            {
+              "type": "uint256",
+              "name": "_price"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "getAllProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getAvailableProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getMarketplaceStats",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": "totalProducts"
+            },
+            {
+              "type": "uint256",
+              "name": "totalSales"
+            },
+            {
+              "type": "uint256",
+              "name": "totalFeesCollected"
+            },
+            {
+              "type": "uint256",
+              "name": "currentFeePercent"
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getProduct",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_productId"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "tuple",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getSellerProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "address",
+              "name": "_seller"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "marketplaceFeePercent",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "owner",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "address",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "paused",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "bool",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "productCount",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "products",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": "id"
+            },
+            {
+              "type": "string",
+              "name": "name"
+            },
+            {
+              "type": "string",
+              "name": "description"
+            },
+            {
+              "type": "uint256",
+              "name": "price"
+            },
+            {
+              "type": "address",
+              "name": "seller"
+            },
+            {
+              "type": "address",
+              "name": "buyer"
+            },
+            {
+              "type": "bool",
+              "name": "isSold"
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "purchaseProduct",
+          "constant": false,
+          "stateMutability": "payable",
+          "payable": true,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_productId"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "renounceOwnership",
+          "constant": false,
+          "payable": false,
+          "inputs": [],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "setMarketplaceFee",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_feePercent"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "transferOwnership",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "address",
+              "name": "newOwner"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "withdrawFees",
+          "constant": false,
+          "payable": false,
+          "inputs": [],
+          "outputs": []
+        }
+      ],
+      "deploymentTime": "2025-08-14T15:13:07.433Z",
+      "version": "1.0.0",
+      "isActive": false
+    },
+    {
+      "contractName": "Marketplace",
+      "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      "network": {
+        "name": "localhost",
+        "chainId": "31337"
+      },
+      "abi": [
+        {
+          "type": "constructor",
+          "stateMutability": "undefined",
+          "payable": false,
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "EnforcedPause",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ExpectedPause",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "OwnableInvalidOwner",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "owner"
+            }
+          ]
+        },
+        {
+          "type": "error",
+          "name": "OwnableUnauthorizedAccount",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account"
+            }
+          ]
+        },
+        {
+          "type": "error",
+          "name": "ReentrancyGuardReentrantCall",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "FeesWithdrawn",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "owner",
+              "indexed": false
+            },
+            {
+              "type": "uint256",
+              "name": "amount",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplaceFeeUpdated",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "newFeePercent",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplacePaused",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplaceUnpaused",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "OwnershipTransferred",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "previousOwner",
+              "indexed": true
+            },
+            {
+              "type": "address",
+              "name": "newOwner",
+              "indexed": true
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "Paused",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "ProductCreated",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "id",
+              "indexed": false
+            },
+            {
+              "type": "string",
+              "name": "name",
+              "indexed": false
+            },
+            {
+              "type": "uint256",
+              "name": "price",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "seller",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "ProductPurchased",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "id",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "seller",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "buyer",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "Unpaused",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "MAX_FEE_PERCENT",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "MAX_PRICE",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "collectedFees",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "createProduct",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "string",
+              "name": "_name"
+            },
+            {
+              "type": "string",
+              "name": "_description"
+            },
+            {
+              "type": "uint256",
+              "name": "_price"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "getAllProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getAvailableProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getMarketplaceStats",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": "totalProducts"
+            },
+            {
+              "type": "uint256",
+              "name": "totalSales"
+            },
+            {
+              "type": "uint256",
+              "name": "totalFeesCollected"
+            },
+            {
+              "type": "uint256",
+              "name": "currentFeePercent"
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getProduct",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_productId"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "tuple",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getSellerProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "address",
+              "name": "_seller"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "marketplaceFeePercent",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "owner",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "address",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "paused",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "bool",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "productCount",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "products",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": "id"
+            },
+            {
+              "type": "string",
+              "name": "name"
+            },
+            {
+              "type": "string",
+              "name": "description"
+            },
+            {
+              "type": "uint256",
+              "name": "price"
+            },
+            {
+              "type": "address",
+              "name": "seller"
+            },
+            {
+              "type": "address",
+              "name": "buyer"
+            },
+            {
+              "type": "bool",
+              "name": "isSold"
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "purchaseProduct",
+          "constant": false,
+          "stateMutability": "payable",
+          "payable": true,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_productId"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "renounceOwnership",
+          "constant": false,
+          "payable": false,
+          "inputs": [],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "setMarketplaceFee",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_feePercent"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "transferOwnership",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "address",
+              "name": "newOwner"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "withdrawFees",
+          "constant": false,
+          "payable": false,
+          "inputs": [],
+          "outputs": []
+        }
+      ],
+      "deploymentTime": "2025-08-14T15:14:00.883Z",
+      "version": "1.0.0",
+      "isActive": false
+    },
+    {
+      "contractName": "Marketplace",
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "network": {
+        "name": "localhost",
+        "chainId": "31337"
+      },
+      "abi": [
+        {
+          "type": "constructor",
+          "stateMutability": "undefined",
+          "payable": false,
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "EnforcedPause",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ExpectedPause",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "OwnableInvalidOwner",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "owner"
+            }
+          ]
+        },
+        {
+          "type": "error",
+          "name": "OwnableUnauthorizedAccount",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account"
+            }
+          ]
+        },
+        {
+          "type": "error",
+          "name": "ReentrancyGuardReentrantCall",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "FeesWithdrawn",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "owner",
+              "indexed": false
+            },
+            {
+              "type": "uint256",
+              "name": "amount",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplaceFeeUpdated",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "newFeePercent",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplacePaused",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "MarketplaceUnpaused",
+          "inputs": []
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "OwnershipTransferred",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "previousOwner",
+              "indexed": true
+            },
+            {
+              "type": "address",
+              "name": "newOwner",
+              "indexed": true
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "Paused",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "ProductCreated",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "id",
+              "indexed": false
+            },
+            {
+              "type": "string",
+              "name": "name",
+              "indexed": false
+            },
+            {
+              "type": "uint256",
+              "name": "price",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "seller",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "ProductPurchased",
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "id",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "seller",
+              "indexed": false
+            },
+            {
+              "type": "address",
+              "name": "buyer",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "anonymous": false,
+          "name": "Unpaused",
+          "inputs": [
+            {
+              "type": "address",
+              "name": "account",
+              "indexed": false
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "MAX_FEE_PERCENT",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "MAX_PRICE",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "collectedFees",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "createProduct",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "string",
+              "name": "_name"
+            },
+            {
+              "type": "string",
+              "name": "_description"
+            },
+            {
+              "type": "uint256",
+              "name": "_price"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "getAllProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getAvailableProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getMarketplaceStats",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": "totalProducts"
+            },
+            {
+              "type": "uint256",
+              "name": "totalSales"
+            },
+            {
+              "type": "uint256",
+              "name": "totalFeesCollected"
+            },
+            {
+              "type": "uint256",
+              "name": "currentFeePercent"
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getProduct",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_productId"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "tuple",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "getSellerProducts",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "address",
+              "name": "_seller"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "tuple[]",
+              "name": "",
+              "components": [
+                {
+                  "type": "uint256",
+                  "name": "id"
+                },
+                {
+                  "type": "string",
+                  "name": "name"
+                },
+                {
+                  "type": "string",
+                  "name": "description"
+                },
+                {
+                  "type": "uint256",
+                  "name": "price"
+                },
+                {
+                  "type": "address",
+                  "name": "seller"
+                },
+                {
+                  "type": "address",
+                  "name": "buyer"
+                },
+                {
+                  "type": "bool",
+                  "name": "isSold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "marketplaceFeePercent",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "owner",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "address",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "paused",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "bool",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "productCount",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "products",
+          "constant": true,
+          "stateMutability": "view",
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": ""
+            }
+          ],
+          "outputs": [
+            {
+              "type": "uint256",
+              "name": "id"
+            },
+            {
+              "type": "string",
+              "name": "name"
+            },
+            {
+              "type": "string",
+              "name": "description"
+            },
+            {
+              "type": "uint256",
+              "name": "price"
+            },
+            {
+              "type": "address",
+              "name": "seller"
+            },
+            {
+              "type": "address",
+              "name": "buyer"
+            },
+            {
+              "type": "bool",
+              "name": "isSold"
+            }
+          ]
+        },
+        {
+          "type": "function",
+          "name": "purchaseProduct",
+          "constant": false,
+          "stateMutability": "payable",
+          "payable": true,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_productId"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "renounceOwnership",
+          "constant": false,
+          "payable": false,
+          "inputs": [],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "setMarketplaceFee",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "uint256",
+              "name": "_feePercent"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "transferOwnership",
+          "constant": false,
+          "payable": false,
+          "inputs": [
+            {
+              "type": "address",
+              "name": "newOwner"
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "withdrawFees",
+          "constant": false,
+          "payable": false,
+          "inputs": [],
+          "outputs": []
+        }
+      ],
+      "deploymentTime": "2025-08-14T15:36:01.299Z",
+      "version": "1.0.0",
+      "isActive": true
+    }
+  ]
+}
