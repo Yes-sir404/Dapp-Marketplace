@@ -45,7 +45,7 @@ const AdminDashboard: React.FC = () => {
     getMarketplaceStats,
     isContractConnected,
     contractAddress,
-    weiToEth,
+    weiToBdag,
   } = useMarketplace(signer);
 
   // Check if current user is admin
@@ -438,10 +438,10 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-2xl font-bold text-white">
                       {stats?.totalFeesCollected
                         ? parseFloat(
-                            weiToEth(stats.totalFeesCollected)
+                            weiToBdag(stats.totalFeesCollected)
                           ).toFixed(4)
                         : "0.0000"}{" "}
-                      ETH
+                      BDAG
                     </p>
                   </div>
                   <DollarSign className="w-8 h-8 text-yellow-400" />
@@ -575,10 +575,10 @@ const AdminDashboard: React.FC = () => {
                   <Wallet className="w-4 h-4" />
                   Withdraw All Fees (
                   {stats?.totalFeesCollected
-                    ? `${parseFloat(weiToEth(stats.totalFeesCollected)).toFixed(
-                        4
-                      )} ETH`
-                    : "0 ETH"}
+                    ? `${parseFloat(
+                        weiToBdag(stats.totalFeesCollected)
+                      ).toFixed(4)} BDAG`
+                    : "0 BDAG"}
                   )
                 </button>
               </div>

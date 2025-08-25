@@ -10,7 +10,7 @@ async function main() {
 
   // Check account balance
   const balance = await ethers.provider.getBalance(deployer.address);
-  console.log("💰 Account balance:", ethers.formatEther(balance), "ETH");
+  console.log("💰 Account balance:", ethers.formatEther(balance), "BDAG");
 
   // Get the contract factory
   const Marketplace = await ethers.getContractFactory("Marketplace");

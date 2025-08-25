@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 import marketplaceArtifact from "../../../artifacts/contracts/Marketplace.sol/Marketplace.json";
 
 // Your deployed contract address (you'll get this after deploying)
-export const CONTRACT_ADDRESS = "0x52e244B0aAcB70DD7F1eD68DF7D965BE8f62193A";
+export const CONTRACT_ADDRESS = "0xCE97dd23D9F6768194C88E4e83C9586313Eba5C3";
 
 // ABI (Application Binary Interface) - tells frontend how to talk to your contract
 // This is generated when you compile your Solidity contract
@@ -33,43 +33,45 @@ export const weiToBdag = (wei: string): string => {
 };
 
 // ✅ Price conversion with caching
+// ✅ Price conversion with fallback (manual value for BDAG)
 class PriceCache {
   private cache: { price: number; timestamp: number } | null = null;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private readonly FIXED_BDAG_PRICE = 0.05; // <-- set BDAG price in USD (example: $0.05)
 
   async getBDAGPrice(): Promise<number> {
     const now = Date.now();
 
+    // If we already cached a value, return it
     if (this.cache && now - this.cache.timestamp < this.CACHE_DURATION) {
       return this.cache.price;
     }
 
     try {
+      // Try fetching from API (in case BDAG is listed later)
       const response = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+        "https://api.coingecko.com/api/v3/simple/price?ids=blockdag&vs_currencies=usd",
         {
           headers: { Accept: "application/json" },
-          signal: AbortSignal.timeout(5000), // 5 second timeout
+          signal: AbortSignal.timeout(5000),
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error("API not available yet");
 
       const data = await response.json();
-      const price = data.ethereum?.usd;
+      const price = data.blockdag?.usd;
 
-      if (typeof price !== "number") {
-        throw new Error("Invalid price data received");
-      }
+      if (typeof price !== "number") throw new Error("Invalid data");
 
       this.cache = { price, timestamp: now };
       return price;
     } catch (error) {
-      console.error("Error fetching BDAG price:", error);
-      // Return cached price if available, otherwise default
-      return this.cache?.price || 2000; // Fallback price
+      console.warn(
+        "⚠️ Falling back to fixed BDAG price:",
+        this.FIXED_BDAG_PRICE
+      );
+      return this.FIXED_BDAG_PRICE;
     }
   }
 }

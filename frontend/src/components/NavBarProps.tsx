@@ -1,5 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import {
+  BarChart3,
+  ChevronDown,
+  LayoutDashboard,
+  ShoppingBag,
+  ShoppingCart,
+  UserCog,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { useWallet } from "../hooks/useWallet";
+import { useMarketplace } from "../hooks/useMarketplace";
 
 interface NavbarProps {
   account: string | null;
@@ -13,6 +24,11 @@ const Navbar: React.FC<NavbarProps> = ({
   isConnecting,
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isDashOpen, setIsDashOpen] = useState(false);
+  const dashboardMenuRef = useRef<HTMLDivElement | null>(null);
+  const { signer } = useWallet();
+  const { getContractOwner } = useMarketplace(signer);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +37,43 @@ const Navbar: React.FC<NavbarProps> = ({
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Close dashboards dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dashboardMenuRef.current &&
+        !dashboardMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsDashOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Determine if connected account is contract owner
+  useEffect(() => {
+    let cancelled = false;
+    const checkOwner = async () => {
+      try {
+        if (!account || !signer) {
+          if (!cancelled) setIsOwner(false);
+          return;
+        }
+        const owner = await getContractOwner();
+        if (!cancelled) {
+          setIsOwner(owner.toLowerCase() === account.toLowerCase());
+        }
+      } catch (e) {
+        if (!cancelled) setIsOwner(false);
+      }
+    };
+    checkOwner();
+    return () => {
+      cancelled = true;
+    };
+  }, [account, signer, getContractOwner]);
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -104,13 +157,83 @@ const Navbar: React.FC<NavbarProps> = ({
             >
               Contact
             </motion.a>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="text-green-400 font-semibold cursor-pointer"
-            >
-              ● BlockDag
-            </motion.div>
           </div>
+
+          {/* Dashboard Links (when connected) */}
+          {account && (
+            <div className="hidden md:flex items-center space-x-4 mr-4">
+              {/* <Link to="/digital-marketplace">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  className="px-4 py-2 text-green-300 hover:text-black transition-colors duration-200"
+                >
+                  Marketplace
+                </motion.button>
+              </Link> */}
+              <div className="relative" ref={dashboardMenuRef}>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setIsDashOpen((v) => !v)}
+                  className="px-4 py-2 text-purple-300 hover:text-purple-200 transition-colors duration-200 inline-flex items-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Dashboards
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isDashOpen ? "rotate-180" : "rotate-0"
+                    }`}
+                  />
+                </motion.button>
+                {isDashOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="absolute right-0 mt-2 w-56 bg-gray-900/95 backdrop-blur border border-gray-800 rounded-xl shadow-xl overflow-hidden"
+                  >
+                    <div className="py-2">
+                      <Link
+                        to="/seller-dashboard"
+                        onClick={() => setIsDashOpen(false)}
+                      >
+                        <div className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors cursor-pointer rounded-lg">
+                          <ShoppingBag className="w-4 h-4 mr-2" />
+                          My Products
+                        </div>
+                      </Link>
+                      <Link
+                        to="/buyer-dashboard"
+                        onClick={() => setIsDashOpen(false)}
+                      >
+                        <div className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors cursor-pointer rounded-lg">
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          My Orders
+                        </div>
+                      </Link>
+                      {isOwner && (
+                        <Link
+                          to="/moul_shi"
+                          onClick={() => setIsDashOpen(false)}
+                        >
+                          <div className="flex items-center gap-2 px-4 py-2 text-sm text-purple-300 hover:bg-gray-800 hover:text-purple-200 transition-colors cursor-pointer border-t border-gray-800">
+                            <UserCog className="w-4 h-4" />{" "}
+                            <span>Admin Dashboard</span>
+                          </div>
+                        </Link>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          )}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="text-green-400 font-semibold cursor-pointer"
+          >
+            ● BlockDag
+          </motion.div>
 
           {/* Wallet Connection Button */}
           <motion.button

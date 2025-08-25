@@ -14,6 +14,9 @@ export interface Product {
   id: string;
   name: string;
   description: string;
+  category?: string;
+  uri?: string; // IPFS URI for product content
+  thumbnailUri?: string; // IPFS URI for product thumbnail
   price: string; // in wei
   seller: string;
   salesCount: string; // ✅ new
@@ -35,7 +38,10 @@ export interface UseMarketplaceReturn {
   createProduct: (
     name: string,
     description: string,
-    priceInBdag: string
+    category: string,
+    priceInBdag: string,
+    uri: string,
+    thumbnailUri: string
   ) => Promise<TransactionResponse>;
   purchaseProduct: (
     productId: string,
@@ -45,10 +51,12 @@ export interface UseMarketplaceReturn {
     productId: string,
     name: string,
     description: string,
+    category: string,
     priceInBdag: string
   ) => Promise<TransactionResponse>;
   getAllProducts: () => Promise<Product[]>;
   getSellerProducts: (sellerAddress: string) => Promise<Product[]>;
+  getProductsByCategory: (category: string) => Promise<Product[]>;
   getMarketplaceStats: () => Promise<MarketplaceStats | null>;
   verifyContract: () => Promise<boolean>;
   getPurchasedProducts: (buyerAddress: string) => Promise<Product[]>;
@@ -57,6 +65,11 @@ export interface UseMarketplaceReturn {
     userAddress: string
   ) => Promise<boolean>;
   getContractOwner: () => Promise<string>;
+  updateProductMedia: (
+    productId: string,
+    uri: string,
+    thumbnailUri: string
+  ) => Promise<TransactionResponse>;
 
   // Utilities
   weiToBdag: (weiAmount: string) => string;
@@ -134,7 +147,10 @@ export const useMarketplace = (
     async (
       name: string,
       description: string,
-      priceInBdag: string
+      category: string,
+      priceInBdag: string,
+      uri: string,
+      thumbnailUri: string
     ): Promise<TransactionResponse> => {
       setIsLoading(true);
       setError(null);
@@ -150,7 +166,10 @@ export const useMarketplace = (
         const tx = await contract.createProduct(
           name.trim(),
           description.trim(),
-          priceInWei
+          category.trim(),
+          priceInWei,
+          uri,
+          thumbnailUri
         );
         const receipt = await tx.wait();
 
@@ -171,6 +190,7 @@ export const useMarketplace = (
       productId: string,
       name: string,
       description: string,
+      category: string,
       priceInBdag: string
     ): Promise<TransactionResponse> => {
       setIsLoading(true);
@@ -190,6 +210,7 @@ export const useMarketplace = (
           id,
           name.trim(),
           description.trim(),
+          category.trim(),
           priceInWei
         );
         const receipt = await tx.wait();
@@ -253,6 +274,9 @@ export const useMarketplace = (
         id: p.id.toString(),
         name: p.name,
         description: p.description,
+        category: p.category,
+        uri: p.uri,
+        thumbnailUri: p.thumbnailUri,
         price: p.price.toString(),
         seller: p.seller,
         salesCount: p.salesCount.toString(),
@@ -279,12 +303,46 @@ export const useMarketplace = (
           id: p.id.toString(),
           name: p.name,
           description: p.description,
+          category: p.category,
+          uri: p.uri,
+          thumbnailUri: p.thumbnailUri,
           price: p.price.toString(),
           seller: p.seller,
           salesCount: p.salesCount.toString(),
         }));
       } catch (error) {
         setError(handleContractError(error, "fetch seller products"));
+        return [];
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [getContract]
+  );
+
+  const getProductsByCategory = useCallback(
+    async (category: string): Promise<Product[]> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        if (!category.trim()) {
+          throw new Error("Category required");
+        }
+        const contract = await getContract();
+        const products = await contract.getProductsByCategory(category.trim());
+        return products.map((p: any) => ({
+          id: p.id.toString(),
+          name: p.name,
+          description: p.description,
+          category: p.category,
+          uri: p.uri,
+          thumbnailUri: p.thumbnailUri,
+          price: p.price.toString(),
+          seller: p.seller,
+          salesCount: p.salesCount.toString(),
+        }));
+      } catch (error) {
+        setError(handleContractError(error, "fetch products by category"));
         return [];
       } finally {
         setIsLoading(false);
@@ -356,6 +414,9 @@ export const useMarketplace = (
             id: p.id.toString(),
             name: p.name,
             description: p.description,
+            category: p.category,
+            uri: p.uri,
+            thumbnailUri: p.thumbnailUri,
             price: p.price.toString(),
             seller: p.seller,
             salesCount: p.salesCount.toString(),
@@ -401,14 +462,51 @@ export const useMarketplace = (
     }
   }, [getContract]);
 
+  const updateProductMedia = useCallback(
+    async (
+      productId: string,
+      uri: string,
+      thumbnailUri: string
+    ): Promise<TransactionResponse> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        if (!uri.trim()) throw new Error("Product URI required");
+        if (!thumbnailUri.trim()) throw new Error("Thumbnail URI required");
+
+        const contract = await getContract();
+        const id = parseInt(productId);
+        if (isNaN(id) || id <= 0) throw new Error("Invalid product ID");
+
+        const tx = await contract.updateProductMedia(
+          id,
+          uri.trim(),
+          thumbnailUri.trim()
+        );
+        const receipt = await tx.wait();
+
+        return { success: true, transactionHash: receipt.hash };
+      } catch (error) {
+        const msg = handleContractError(error, "update product media");
+        setError(msg);
+        return { success: false, error: msg };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [getContract]
+  );
+
   return {
     isLoading,
     error,
     createProduct,
     purchaseProduct,
     updateProduct,
+    updateProductMedia,
     getAllProducts,
     getSellerProducts,
+    getProductsByCategory,
     getMarketplaceStats,
     verifyContract,
     getPurchasedProducts,

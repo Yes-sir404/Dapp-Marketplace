@@ -3,6 +3,8 @@ import DigitalMarketplace from "../pages/DigitalMarketplace";
 import MainPage from "../pages/MainPage";
 import DigitalProductListing from "../pages/DigitalProductListing";
 import AdminDashboard from "../pages/AdminDashboard";
+import SellerDashboard from "../pages/SellerDashboard";
+import BuyerDashboard from "../pages/BuyerDashboard";
 // import ScrollToTop from "./ScrollToTop"; // Import the ScrollToTop component
 
 function ReactRouters() {
@@ -16,7 +18,9 @@ function ReactRouters() {
           path="/digital-marketplace-listing"
           element={<DigitalProductListing />}
         />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/moul_shi" element={<AdminDashboard />} />
+        <Route path="/seller-dashboard" element={<SellerDashboard />} />
+        <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
         {/* Wildcard for 404 */}
         <Route path="*" element={<h1>404 Not Found</h1>} />
       </Routes>

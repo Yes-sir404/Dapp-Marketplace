@@ -10,18 +10,23 @@ import {
   Loader,
   RefreshCw,
   AlertCircle,
-  BarChart3,
   Package,
+  Download,
+  CheckCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWallet } from "../../hooks/useWallet";
 import { useMarketplace } from "../../hooks/useMarketplace";
 import { formatEther } from "ethers";
+import { downloadFile, getFileNameFromUri } from "../../utils/download";
 
 interface Product {
   id: string;
   name: string;
   description: string;
+  category?: string;
+  uri?: string; // IPFS URI for product content
+  thumbnailUri?: string; // IPFS URI for product thumbnail
   price: string; // in wei
   seller: string;
   salesCount: string;
@@ -52,15 +57,20 @@ const DigitalMarketplace: React.FC = () => {
     id: string;
     name: string;
     description: string;
+    category: string;
     price: string;
+    uri: string;
+    thumbnailUri: string;
   } | null>(null);
 
   // Wallet and contract hooks
   const { account, signer, connectWallet, isConnecting } = useWallet();
   const {
-    getAllProducts, // ⬅️ updated
+    getAllProducts,
+    getProductsByCategory,
     purchaseProduct,
     updateProduct,
+    updateProductMedia,
     isLoading,
     error: contractError,
     weiToBdag,
@@ -81,15 +91,33 @@ const DigitalMarketplace: React.FC = () => {
     setLoadError(null);
     try {
       console.log("🔄 Loading products from contract:", contractAddress);
-      const blockchainProducts = await getAllProducts();
+      let blockchainProducts;
+
+      // Use indexed category query if a specific category is selected
+      if (selectedCategory !== "All") {
+        blockchainProducts = await getProductsByCategory(selectedCategory);
+        console.log(
+          `✅ Loaded ${blockchainProducts.length} products in category: ${selectedCategory}`
+        );
+      } else {
+        blockchainProducts = await getAllProducts();
+        console.log("✅ Loaded all products:", blockchainProducts.length);
+      }
+
       setProducts(blockchainProducts);
-      console.log("✅ Loaded products:", blockchainProducts.length);
     } catch (error: any) {
       console.error("❌ Failed to load products:", error);
       setLoadError(error.message || "Failed to load products from blockchain");
       setProducts([]);
     }
-  }, [signer, isContractConnected, getAllProducts, contractAddress]);
+  }, [
+    signer,
+    isContractConnected,
+    getAllProducts,
+    getProductsByCategory,
+    selectedCategory,
+    contractAddress,
+  ]);
 
   const loadMyPurchases = useCallback(async () => {
     if (!signer || !isContractConnected || !account) {
@@ -178,7 +206,7 @@ const DigitalMarketplace: React.FC = () => {
     }
   }, [products, showMyPurchases, checkPurchaseStatus]);
 
-  // Filter products based on search and category
+  // Filter products based on search and category, and hide own/purchased by default
   useEffect(() => {
     const q = searchQuery.toLowerCase();
     const filtered = products.filter((product) => {
@@ -186,17 +214,37 @@ const DigitalMarketplace: React.FC = () => {
         product.name.toLowerCase().includes(q) ||
         product.description.toLowerCase().includes(q);
 
-      const match = product.description.match(/^cat:(.*?)\|(.*)$/);
-      const productCategory = match ? match[1] : "Digital Art";
+      // Prefer on-chain category if available; fallback to legacy encoded description
+      let productCategory = product.category || "Digital Art";
+      if (!product.category) {
+        const match = product.description.match(/^cat:(.*?)\|(.*)$/);
+        productCategory = match ? match[1] : "Digital Art";
+      }
 
       const matchesCategory =
         selectedCategory === "All" || selectedCategory === productCategory;
+
+      // By default (marketplace view), hide user's own listings and already purchased items
+      if (!showMyPurchases && !showMyListings && account) {
+        const isOwnListing =
+          product.seller.toLowerCase() === account.toLowerCase();
+        const isPurchased = purchasedProductIds.has(product.id);
+        if (isOwnListing || isPurchased) return false;
+      }
 
       return matchesSearch && matchesCategory;
     });
 
     setFilteredProducts(filtered);
-  }, [products, searchQuery, selectedCategory]);
+  }, [
+    products,
+    searchQuery,
+    selectedCategory,
+    showMyPurchases,
+    showMyListings,
+    account,
+    purchasedProductIds,
+  ]);
 
   const toggleLike = (id: string) => {
     const next = new Set(likedItems);
@@ -210,7 +258,13 @@ const DigitalMarketplace: React.FC = () => {
       id: product.id,
       name: product.name,
       description: product.description,
+      category:
+        product.category ||
+        product.description.match(/^cat:(.*?)\|(.*)$/)?.[1] ||
+        "Digital Art",
       price: weiToBdag(product.price),
+      uri: product.uri || "",
+      thumbnailUri: product.thumbnailUri || "",
     });
   };
 
@@ -228,6 +282,7 @@ const DigitalMarketplace: React.FC = () => {
         editProduct.id,
         editProduct.name,
         editProduct.description,
+        editProduct.category,
         editProduct.price
       );
 
@@ -268,6 +323,77 @@ const DigitalMarketplace: React.FC = () => {
         status: "error",
         message: error.message || "An unexpected error occurred",
       });
+    }
+  };
+
+  const handleUpdateProductMedia = async () => {
+    if (!editProduct) return;
+
+    setPurchaseStatus({
+      productId: editProduct.id,
+      status: "pending",
+      message: "Updating product media...",
+    });
+
+    try {
+      const result = await updateProductMedia(
+        editProduct.id,
+        editProduct.uri,
+        editProduct.thumbnailUri
+      );
+
+      if (result.success) {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "success",
+          message: `Product media updated successfully! Tx: ${result.transactionHash?.slice(
+            0,
+            10
+          )}...`,
+        });
+
+        setEditProduct(null);
+        setTimeout(() => {
+          if (showMyListings) {
+            loadMyListings();
+          } else {
+            loadProducts();
+          }
+        }, 1000);
+        setTimeout(
+          () =>
+            setPurchaseStatus({ productId: null, status: "idle", message: "" }),
+          5000
+        );
+      } else {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "error",
+          message: result.error || "Media update failed",
+        });
+      }
+    } catch (error: any) {
+      console.error("❌ Media update error:", error);
+      setPurchaseStatus({
+        productId: editProduct.id,
+        status: "error",
+        message: error.message || "An unexpected error occurred",
+      });
+    }
+  };
+
+  const handleDownload = async (product: Product) => {
+    if (!product.uri) {
+      alert("No file available for download");
+      return;
+    }
+
+    try {
+      const fileName = getFileNameFromUri(product.uri, product.name);
+      await downloadFile(product.uri, fileName);
+    } catch (error: any) {
+      console.error("Download failed:", error);
+      alert(`Download failed: ${error.message}`);
     }
   };
 
@@ -313,12 +439,46 @@ const DigitalMarketplace: React.FC = () => {
       if (result.success) {
         setPurchaseStatus({
           productId: product.id,
-          status: "success",
-          message: `Purchase successful! Tx: ${result.transactionHash?.slice(
-            0,
-            10
-          )}...`,
+          status: "pending",
+          message: "Purchase successful! Downloading your file...",
         });
+
+        // Auto-download the file after successful purchase
+        try {
+          if (product.uri) {
+            console.log("🔄 Auto-downloading purchased file...");
+            const fileName = getFileNameFromUri(product.uri, product.name);
+            await downloadFile(product.uri, fileName);
+            console.log("✅ Auto-download completed");
+
+            setPurchaseStatus({
+              productId: product.id,
+              status: "success",
+              message: `Purchase successful! File downloaded. Tx: ${result.transactionHash?.slice(
+                0,
+                10
+              )}...`,
+            });
+          } else {
+            setPurchaseStatus({
+              productId: product.id,
+              status: "success",
+              message: `Purchase successful! No file available for download. Tx: ${result.transactionHash?.slice(
+                0,
+                10
+              )}...`,
+            });
+          }
+        } catch (downloadError: any) {
+          console.error("❌ Auto-download failed:", downloadError);
+          setPurchaseStatus({
+            productId: product.id,
+            status: "success",
+            message: `Purchase successful! Download failed: ${
+              downloadError.message
+            }. Tx: ${result.transactionHash?.slice(0, 10)}...`,
+          });
+        }
 
         setTimeout(() => {
           if (showMyPurchases) {
@@ -473,7 +633,18 @@ const DigitalMarketplace: React.FC = () => {
 
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                // Trigger reload when category changes to use indexed query
+                if (
+                  signer &&
+                  isContractConnected &&
+                  !showMyPurchases &&
+                  !showMyListings
+                ) {
+                  setTimeout(() => loadProducts(), 100);
+                }
+              }}
               className="px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 text-white"
             >
               {categories.map((category) => (
@@ -529,14 +700,6 @@ const DigitalMarketplace: React.FC = () => {
             >
               {showMyPurchases ? "Showing: My Purchases" : "Show My Purchases"}
             </button>
-
-            <a
-              href="/admin"
-              className="px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Admin
-            </a>
           </div>
         </div>
       </header>
@@ -590,23 +753,48 @@ const DigitalMarketplace: React.FC = () => {
               >
                 {/* Card Header */}
                 <div
-                  className={`h-48 bg-gradient-to-br ${getGradient(
-                    product.id
-                  )} relative flex items-center justify-center`}
+                  className={`h-48 bg-slate-900 relative flex items-center justify-center`}
                 >
-                  <div className="text-6xl opacity-30">
-                    {getEmoji(product.id)}
-                  </div>
-
-                  <div className="absolute top-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full text-xs font-medium">
-                    Digital Asset
-                  </div>
-
+                  {product.thumbnailUri ? (
+                    <img
+                      src={
+                        (product.thumbnailUri.startsWith("ipfs://")
+                          ? `https://gateway.pinata.cloud/ipfs/${product.thumbnailUri.replace(
+                              "ipfs://",
+                              ""
+                            )}`
+                          : product.thumbnailUri) as any
+                      }
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div
+                      className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${getGradient(
+                        product.id
+                      )}`}
+                    >
+                      <div className="text-6xl opacity-30">
+                        {getEmoji(product.id)}
+                      </div>
+                    </div>
+                  )}
+                  {(() => {
+                    const cat =
+                      product.category ||
+                      product.description.match(/^cat:(.*?)\|(.*)$/)?.[1] ||
+                      "Digital Art";
+                    return (
+                      <span className="absolute top-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full text-xs font-medium">
+                        {cat}
+                      </span>
+                    );
+                  })()}
                   {/* Sales pill */}
                   <div className="absolute bottom-4 left-4 bg-black/50 px-3 py-1 rounded-full text-xs">
                     {product.salesCount} sold
                   </div>
-
                   <button
                     onClick={() => toggleLike(product.id)}
                     className="absolute top-4 right-4 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-all duration-200"
@@ -626,20 +814,10 @@ const DigitalMarketplace: React.FC = () => {
                   <h3 className="text-lg font-semibold mb-2 text-white">
                     {product.name}
                   </h3>
-                  <div className="flex items-center gap-2 mb-2">
-                    {(() => {
-                      const match =
-                        product.description.match(/^cat:(.*?)\|(.*)$/);
-                      const cat = match ? match[1] : "Digital Art";
-                      return (
-                        <span className="text-xs px-2 py-1 rounded-full bg-slate-700 text-slate-300 border border-slate-600">
-                          {cat}
-                        </span>
-                      );
-                    })()}
-                  </div>
                   <p className="text-slate-400 text-sm mb-4 line-clamp-2">
-                    {product.description.replace(/^cat:(.*?)\|/, "")}
+                    {product.category
+                      ? product.description
+                      : product.description.replace(/^cat:(.*?)\|/, "")}
                   </p>
 
                   <div className="flex items-center justify-between text-sm text-slate-400 mb-4">
@@ -679,9 +857,18 @@ const DigitalMarketplace: React.FC = () => {
                         )}
                       </div>
                     ) : purchasedProductIds.has(product.id) ? (
-                      <div className="px-6 py-2 rounded-lg bg-green-900/20 text-green-300 border border-green-500/50 flex items-center space-x-2">
-                        <Star className="w-4 h-4 fill-current" />
-                        <span>Purchased</span>
+                      <div className="flex gap-2">
+                        <div className="px-6 py-2 rounded-lg bg-green-900/20 text-green-300 border border-green-500/50 flex items-center space-x-2">
+                          <Star className="w-4 h-4 fill-current" />
+                          <span>Purchased</span>
+                        </div>
+                        <button
+                          onClick={() => handleDownload(product)}
+                          className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors duration-200 flex items-center space-x-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Download</span>
+                        </button>
                       </div>
                     ) : (
                       <button
@@ -721,7 +908,19 @@ const DigitalMarketplace: React.FC = () => {
                             : "bg-blue-900/20 text-blue-300"
                         }`}
                       >
-                        {purchaseStatus.message}
+                        <div className="flex items-center gap-2">
+                          {purchaseStatus.message.includes("Downloading") && (
+                            <Download className="w-4 h-4 animate-pulse" />
+                          )}
+                          {purchaseStatus.status === "success" &&
+                            purchaseStatus.message.includes("downloaded") && (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                          {purchaseStatus.status === "error" && (
+                            <AlertCircle className="w-4 h-4" />
+                          )}
+                          <span>{purchaseStatus.message}</span>
+                        </div>
                       </div>
                     )}
 
@@ -790,6 +989,30 @@ const DigitalMarketplace: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Category
+                    </label>
+                    <select
+                      value={editProduct.category}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          category: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      {categories
+                        .filter((c) => c !== "All")
+                        .map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
                       Description
                     </label>
                     <textarea
@@ -823,6 +1046,42 @@ const DigitalMarketplace: React.FC = () => {
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Product URI (IPFS)
+                    </label>
+                    <input
+                      type="text"
+                      value={editProduct.uri}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          uri: e.target.value,
+                        })
+                      }
+                      placeholder="ipfs://..."
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Thumbnail URI (IPFS)
+                    </label>
+                    <input
+                      type="text"
+                      value={editProduct.thumbnailUri}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          thumbnailUri: e.target.value,
+                        })
+                      }
+                      placeholder="ipfs://..."
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-3 mt-6">
@@ -837,12 +1096,22 @@ const DigitalMarketplace: React.FC = () => {
                     disabled={
                       !editProduct.name.trim() ||
                       !editProduct.description.trim() ||
+                      !editProduct.category.trim() ||
                       !editProduct.price ||
                       parseFloat(editProduct.price) <= 0
                     }
                     className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Update Product
+                  </button>
+                  <button
+                    onClick={handleUpdateProductMedia}
+                    disabled={
+                      !editProduct.uri || !editProduct.thumbnailUri || isLoading
+                    }
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Update Media
                   </button>
                 </div>
               </motion.div>

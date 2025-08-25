@@ -1,22 +1,27 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  DollarSign,
   FileText,
   Eye,
   Package,
-  TrendingUp,
   Wallet,
   CheckCircle,
   XCircle,
 } from "lucide-react";
 import { useWallet } from "../../hooks/useWallet";
 import { useMarketplace } from "../../hooks/useMarketplace";
+import FileUploadInterface from "../FileUploadInterface";
+import { uploadFileToPinata } from "../../services/pinata";
+import { generateThumbnail } from "../../utils/thumbnail";
 
 interface ProductFormData {
   name: string;
   description: string;
   price: string; // in BDAG
+}
+
+interface UploadedFiles {
+  mainFile: File | null;
 }
 
 const CATEGORIES = [
@@ -36,6 +41,9 @@ const DigitalProductListing: React.FC = () => {
     price: "",
   });
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
+    mainFile: null,
+  });
 
   const [transactionStatus, setTransactionStatus] = useState<{
     status: "idle" | "pending" | "success" | "error";
@@ -64,6 +72,14 @@ const DigitalProductListing: React.FC = () => {
       ...prev,
       [name]: value,
     }));
+
+    if (transactionStatus.status !== "idle") {
+      setTransactionStatus({ status: "idle", message: "" });
+    }
+  };
+
+  const handleFilesSelected = (mainFile: File | null) => {
+    setUploadedFiles({ mainFile });
 
     if (transactionStatus.status !== "idle") {
       setTransactionStatus({ status: "idle", message: "" });
@@ -118,16 +134,56 @@ const DigitalProductListing: React.FC = () => {
       return;
     }
 
+    if (!uploadedFiles.mainFile) {
+      setTransactionStatus({
+        status: "error",
+        message: "Please upload your digital product file",
+      });
+      return;
+    }
+
     setTransactionStatus({
       status: "pending",
-      message: "Creating product on blockchain...",
+      message: "Uploading files to IPFS...",
     });
 
     try {
+      // Check if Pinata JWT is configured
+      if (!import.meta.env.VITE_PINATA_JWT) {
+        throw new Error(
+          "Pinata JWT not configured. Please set VITE_PINATA_JWT in your .env file"
+        );
+      }
+
+      // Upload main file to Pinata
+      console.log("🔄 Uploading main file to Pinata...");
+      const main = await uploadFileToPinata(uploadedFiles.mainFile);
+      console.log("✅ Main file uploaded:", main.uri);
+
+      // Generate and upload thumbnail (image resize or placeholder)
+      console.log("🔄 Generating thumbnail...");
+      const thumbBlob = await generateThumbnail(uploadedFiles.mainFile);
+      console.log("✅ Thumbnail generated, size:", thumbBlob.size);
+
+      console.log("🔄 Uploading thumbnail to Pinata...");
+      const thumb = await uploadFileToPinata(
+        thumbBlob,
+        `${uploadedFiles.mainFile.name}-thumb.jpg`
+      );
+      console.log("✅ Thumbnail uploaded:", thumb.uri);
+
+      setTransactionStatus({
+        status: "pending",
+        message: "Creating product on blockchain...",
+      });
+
       const result = await createProduct(
         formData.name,
-        `cat:${category}|${formData.description}`,
-        formData.price // hook internally converts BDAG → wei
+        formData.description,
+        category,
+        formData.price,
+        main.uri,
+        thumb.uri
       );
 
       if (result.success) {
@@ -138,17 +194,35 @@ const DigitalProductListing: React.FC = () => {
           productId: result.productId,
         });
         setFormData({ name: "", description: "", price: "" });
+        setUploadedFiles({ mainFile: null });
       } else {
         setTransactionStatus({
           status: "error",
           message: result.error || "Failed to create product",
         });
       }
-    } catch (err) {
-      console.error("Unexpected error:", err);
+    } catch (err: any) {
+      console.error("❌ Error details:", err);
+      console.error("❌ Error message:", err.message);
+      console.error("❌ Error stack:", err.stack);
+
+      let errorMessage = "An unexpected error occurred. Please try again.";
+
+      if (err.message?.includes("Pinata JWT")) {
+        errorMessage = err.message;
+      } else if (err.message?.includes("Failed to fetch")) {
+        errorMessage =
+          "Network error. Please check your internet connection and try again.";
+      } else if (err.message?.includes("401") || err.message?.includes("403")) {
+        errorMessage =
+          "Pinata authentication failed. Please check your JWT token.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
       setTransactionStatus({
         status: "error",
-        message: "An unexpected error occurred. Please try again.",
+        message: errorMessage,
       });
     }
   };
@@ -310,6 +384,11 @@ const DigitalProductListing: React.FC = () => {
                   />
                 </div>
 
+                {/* File Upload Section */}
+                <div className="mt-6">
+                  <FileUploadInterface onFilesSelected={handleFilesSelected} />
+                </div>
+
                 <motion.button
                   type="submit"
                   disabled={
@@ -317,12 +396,13 @@ const DigitalProductListing: React.FC = () => {
                     !formData.name ||
                     !formData.description ||
                     !formData.price ||
+                    !uploadedFiles.mainFile ||
                     !isContractConnected ||
                     transactionStatus.status === "pending"
                   }
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full py-4 px-6 rounded-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                  className="w-full py-4 px-6 rounded-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isCreatingProduct ? "Creating..." : "List Product"}
                 </motion.button>
@@ -353,6 +433,23 @@ const DigitalProductListing: React.FC = () => {
                     {formData.description ||
                       "Your product description will appear here..."}
                   </p>
+
+                  {/* File Information */}
+                  {uploadedFiles.mainFile && (
+                    <div className="mb-3 p-2 bg-slate-800/50 rounded-lg">
+                      <p className="text-xs text-gray-400 mb-1">
+                        Product File:
+                      </p>
+                      <p className="text-xs text-white font-medium truncate">
+                        {uploadedFiles.mainFile.name}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {(uploadedFiles.mainFile.size / 1024 / 1024).toFixed(2)}{" "}
+                        MB
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center">
                     <span className="text-purple-400 text-sm">
                       {formData.price ? `${formData.price} BDAG` : "0.1 BDAG"}
@@ -384,7 +481,10 @@ const DigitalProductListing: React.FC = () => {
         </div>
 
         {/* Smart Contract Call Preview */}
-        {(formData.name || formData.description || formData.price) && (
+        {(formData.name ||
+          formData.description ||
+          formData.price ||
+          uploadedFiles.mainFile) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -392,7 +492,11 @@ const DigitalProductListing: React.FC = () => {
           >
             <span className="text-purple-400">createProduct</span>( "
             {formData.name || "name"}", "{formData.description || "description"}
-            ", {priceInWei} )
+            ", "{category}", {priceInWei}, "
+            {uploadedFiles.mainFile
+              ? `ipfs://${uploadedFiles.mainFile.name}`
+              : "ipfs://..."}
+            ", "ipfs://placeholder-thumbnail" )
           </motion.div>
         )}
       </div>

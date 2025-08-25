@@ -184,7 +184,7 @@ const MetaFooter: React.FC<FooterProps> = ({
               <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-400/20 px-3 py-1 rounded-full">
                 <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
                 <span className="text-blue-400 text-xs font-medium">
-                  Ethereum
+                  BlockDag
                 </span>
               </div>
               <div className="flex items-center gap-2 bg-green-500/10 border border-green-400/20 px-3 py-1 rounded-full">
