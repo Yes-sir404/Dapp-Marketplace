@@ -1,20 +1,26 @@
-node_modules
+node_modules/
+
+# Env files (secrets)
 .env
+.env.*
 
-# Add this line to .gitignore
-.env
+# Hardhat build artifacts
+artifacts/
+cache/
 
-# Hardhat files
-/cache
-/artifacts
+# TypeChain
+typechain/
+typechain-types/
 
-# TypeChain files
-/typechain
-/typechain-types
+# Coverage
+coverage/
+coverage.json
 
-# solidity-coverage files
-/coverage
-/coverage.json
-
-# Hardhat Ignition default folder for deployments against a local node
+# Hardhat Ignition local deployments
 ignition/deployments/chain-31337
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
