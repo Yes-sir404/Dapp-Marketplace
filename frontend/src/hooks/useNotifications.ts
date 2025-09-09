@@ -111,9 +111,26 @@ export const useNotifications = () => {
                 read: false,
                 action: {
                   label: "Download",
-                  onClick: () => {
-                    // Handle download logic
-                    console.log("Downloading product:", product.name);
+                  onClick: async () => {
+                    try {
+                      const { downloadFile, getFileNameFromUri } = await import(
+                        "../utils/download"
+                      );
+                      const fileName = getFileNameFromUri(
+                        product.uri,
+                        product.name
+                      );
+                      await downloadFile(product.uri, fileName);
+                    } catch (error) {
+                      console.error("Download failed:", error);
+                      alert(
+                        `Download failed: ${
+                          error instanceof Error
+                            ? error.message
+                            : "Unknown error"
+                        }`
+                      );
+                    }
                   },
                 },
               });
