@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import type { Notification } from "../components/NotificationSystem";
-import type { PopupNotification } from "../components/PopupNotification";
 import { useMarketplace } from "./useMarketplace";
 import { useWallet } from "./useWallet";
 import { useNotificationContext } from "../contexts/NotificationContext";
@@ -166,38 +165,32 @@ export const useNotifications = () => {
       );
 
       // Listen for ProductCreated events
-      contract.on(
-        "ProductCreated",
-        async (productId, name, description, price, seller, event) => {
-          if (seller.toLowerCase() === account.toLowerCase()) {
-            addNotification({
-              type: "info",
-              title: "Product Listed Successfully",
-              message: `Your product "${name}" has been listed for ${parseFloat(
-                weiToBdag(price.toString())
-              ).toFixed(4)} BDAG`,
-              read: false,
-            });
-          }
+      contract.on("ProductCreated", async (_productId, name, price, seller) => {
+        if (seller.toLowerCase() === account.toLowerCase()) {
+          addNotification({
+            type: "info",
+            title: "Product Listed Successfully",
+            message: `Your product "${name}" has been listed for ${parseFloat(
+              weiToBdag(price.toString())
+            ).toFixed(4)} BDAG`,
+            read: false,
+          });
         }
-      );
+      });
 
       // Listen for ProductUpdated events
-      contract.on(
-        "ProductUpdated",
-        async (productId, name, description, price, seller, event) => {
-          if (seller.toLowerCase() === account.toLowerCase()) {
-            addNotification({
-              type: "info",
-              title: "Product Updated",
-              message: `Your product "${name}" has been updated with a new price of ${parseFloat(
-                weiToBdag(price.toString())
-              ).toFixed(4)} BDAG`,
-              read: false,
-            });
-          }
+      contract.on("ProductUpdated", async (_productId, name, price, seller) => {
+        if (seller.toLowerCase() === account.toLowerCase()) {
+          addNotification({
+            type: "info",
+            title: "Product Updated",
+            message: `Your product "${name}" has been updated with a new price of ${parseFloat(
+              weiToBdag(price.toString())
+            ).toFixed(4)} BDAG`,
+            read: false,
+          });
         }
-      );
+      });
     } catch (error) {
       console.error("Error setting up event listeners:", error);
     }

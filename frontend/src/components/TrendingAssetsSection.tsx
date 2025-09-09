@@ -11,7 +11,7 @@ import {
 import { Link } from "react-router";
 
 const TrendingAssetsSection: React.FC = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [, setCurrentSlide] = useState(0);
 
   const assets = [
     {

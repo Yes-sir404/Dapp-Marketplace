@@ -7,10 +7,8 @@ import {
   Bell,
   RefreshCw,
   Calendar,
-  Users,
   BarChart3,
   AlertTriangle,
-  CheckCircle,
   Loader,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -50,15 +48,10 @@ const SellerDashboard: React.FC = () => {
   >("overview");
 
   const { account, signer } = useWallet();
-  const { getSellerProducts, weiToBdag, isContractConnected, contractAddress } =
+  const { getSellerProducts, weiToBdag, isContractConnected } =
     useMarketplace(signer);
-  const {
-    notifications,
-    getSellerEvents,
-    getSellerStats,
-    markAsRead,
-    dismissNotification,
-  } = useNotifications();
+  const { notifications, getSellerEvents, markAsRead, dismissNotification } =
+    useNotifications();
   const { addPopupNotification } = useNotificationContext();
 
   const loadSellerData = useCallback(async () => {

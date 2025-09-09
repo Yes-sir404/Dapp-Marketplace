@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import {
   BarChart3,
   ChevronDown,
-  LayoutDashboard,
   ShoppingBag,
   ShoppingCart,
   UserCog,

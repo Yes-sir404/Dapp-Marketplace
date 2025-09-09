@@ -99,7 +99,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ account }) => {
               transition={{ duration: 0.8, delay: 0.8 }}
             >
               {["ENS Support", "Multi-Wallet", "Low Gas Fees"].map(
-                (feature, index) => (
+                (feature) => (
                   <div key={feature} className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                     <span className="text-gray-300">{feature}</span>

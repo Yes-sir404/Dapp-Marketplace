@@ -13,7 +13,6 @@ import {
   CheckCircle,
   Loader,
   Eye,
-  Clock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWallet } from "../../hooks/useWallet";
@@ -56,7 +55,6 @@ const BuyerDashboard: React.FC = () => {
     getPurchasedProducts,
     weiToBdag,
     isContractConnected,
-    contractAddress,
   } = useMarketplace(signer);
   const { getBuyerEvents } = useNotifications();
   const { addPopupNotification } = useNotificationContext();

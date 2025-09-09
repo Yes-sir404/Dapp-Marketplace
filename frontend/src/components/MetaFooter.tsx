@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import { Star, Github, Twitter, Instagram, Wallet } from "lucide-react";
+import { Github, Twitter, Instagram } from "lucide-react";
 interface FooterProps {
   account: string | null;
   onConnectWallet: () => void;
