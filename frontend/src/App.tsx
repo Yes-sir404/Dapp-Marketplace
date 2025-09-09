@@ -1,4 +1,4 @@
-import "./app.css";
+import "./App.css";
 import ReactRouters from "./components/Routes/ReactRouters.tsx";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import GlobalPopupNotificationManager from "./components/GlobalPopupNotificationManager";
