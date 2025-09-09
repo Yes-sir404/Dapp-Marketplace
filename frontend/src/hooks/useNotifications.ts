@@ -80,7 +80,7 @@ export const useNotifications = () => {
       // Listen for ProductPurchased events
       contract.on(
         "ProductPurchased",
-        async (productId, seller, buyer, event) => {
+        async (productId: any, seller: any, buyer: any, event: any) => {
           try {
             // Get product details
             const product = await contract.getProduct(productId);

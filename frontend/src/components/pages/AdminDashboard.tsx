@@ -13,8 +13,10 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { ethers } from "ethers";
 import { useWallet } from "../../hooks/useWallet";
 import { useMarketplace } from "../../hooks/useMarketplace";
+import { MARKETPLACE_ABI } from "../../contracts/contractConfig";
 
 interface AdminStats {
   totalProducts: string;
@@ -60,9 +62,9 @@ const AdminDashboard: React.FC = () => {
       const contractStats = await getMarketplaceStats();
       if (contractStats) {
         // Get additional contract info
-        const contract = new (await import("ethers")).Contract(
+        const contract = new ethers.Contract(
           contractAddress,
-          (await import("../../contracts/contractConfig")).MARKETPLACE_ABI,
+          MARKETPLACE_ABI,
           signer
         );
 

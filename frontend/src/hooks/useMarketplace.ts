@@ -408,7 +408,7 @@ export const useMarketplace = (
 
         const results: Product[] = [];
         for (const idStr of purchasedIds) {
-          const id = parseInt(idStr, 10);
+          const id = parseInt(String(idStr), 10);
           const p = await contract.getProduct(id);
           results.push({
             id: p.id.toString(),
