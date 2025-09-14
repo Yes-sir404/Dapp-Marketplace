@@ -34,9 +34,9 @@ export const useWallet = (): UseWalletReturn => {
     setError(null);
 
     try {
-      const accounts = await window.ethereum.request({
+      const accounts = (await window.ethereum.request({
         method: "eth_requestAccounts",
-      });
+      })) as string[];
 
       if (accounts.length > 0) {
         const browserProvider = new ethers.BrowserProvider(window.ethereum);
@@ -48,9 +48,14 @@ export const useWallet = (): UseWalletReturn => {
 
         localStorage.setItem("walletConnected", "true");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error connecting wallet:", err);
-      if (err.code === 4001) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "code" in err &&
+        err.code === 4001
+      ) {
         setError("Please connect to MetaMask.");
       } else {
         setError("An error occurred while connecting the wallet.");
@@ -76,9 +81,9 @@ export const useWallet = (): UseWalletReturn => {
         localStorage.getItem("walletConnected") === "true"
       ) {
         try {
-          const accounts = await window.ethereum.request({
+          const accounts = (await window.ethereum.request({
             method: "eth_accounts",
-          });
+          })) as string[];
 
           if (accounts.length > 0) {
             const browserProvider = new ethers.BrowserProvider(window.ethereum);
@@ -101,7 +106,8 @@ export const useWallet = (): UseWalletReturn => {
   useEffect(() => {
     if (!isMetaMaskInstalled || !window.ethereum) return;
 
-    const handleAccountsChanged = (accounts: string[]) => {
+    const handleAccountsChanged = (...args: unknown[]) => {
+      const accounts = args[0] as string[];
       if (accounts.length === 0) {
         disconnectWallet();
       } else if (accounts[0] !== account) {

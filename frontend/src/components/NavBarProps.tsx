@@ -64,7 +64,7 @@ const Navbar: React.FC<NavbarProps> = ({
         if (!cancelled) {
           setIsOwner(owner.toLowerCase() === account.toLowerCase());
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setIsOwner(false);
       }
     };

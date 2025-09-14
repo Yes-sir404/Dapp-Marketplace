@@ -66,7 +66,7 @@ class PriceCache {
 
       this.cache = { price, timestamp: now };
       return price;
-    } catch (error) {
+    } catch {
       console.warn(
         "⚠️ Falling back to fixed BDAG price:",
         this.FIXED_BDAG_PRICE
