@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { useWallet } from "../../hooks/useWallet";
 import { useMarketplace } from "../../hooks/useMarketplace";
+import { useNotificationContext } from "../../contexts/NotificationContext";
 import FileUploadInterface from "../FileUploadInterface";
+import ThumbnailUpload from "../ThumbnailUpload";
 import { uploadFileToPinata } from "../../services/pinata";
 import { generateThumbnail } from "../../utils/thumbnail";
 
@@ -22,6 +24,7 @@ interface ProductFormData {
 
 interface UploadedFiles {
   mainFile: File | null;
+  thumbnailFile: File | null;
 }
 
 const CATEGORIES = [
@@ -43,6 +46,7 @@ const DigitalProductListing: React.FC = () => {
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     mainFile: null,
+    thumbnailFile: null,
   });
 
   const [transactionStatus, setTransactionStatus] = useState<{
@@ -64,6 +68,25 @@ const DigitalProductListing: React.FC = () => {
     isContractConnected,
   } = useMarketplace(signer);
 
+  const { addPopupNotification } = useNotificationContext();
+
+  // Helper function to handle pause errors
+  const handlePauseError = (error: string) => {
+    if (
+      error.includes("marketplace is currently paused") ||
+      error.includes("maintenance")
+    ) {
+      addPopupNotification({
+        type: "warning",
+        title: "Marketplace Temporarily Unavailable",
+        message: error,
+        duration: 8000,
+      });
+      return true;
+    }
+    return false;
+  };
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -79,7 +102,15 @@ const DigitalProductListing: React.FC = () => {
   };
 
   const handleFilesSelected = (mainFile: File | null) => {
-    setUploadedFiles({ mainFile });
+    setUploadedFiles((prev) => ({ ...prev, mainFile }));
+
+    if (transactionStatus.status !== "idle") {
+      setTransactionStatus({ status: "idle", message: "" });
+    }
+  };
+
+  const handleThumbnailSelected = (thumbnailFile: File | null) => {
+    setUploadedFiles((prev) => ({ ...prev, thumbnailFile }));
 
     if (transactionStatus.status !== "idle") {
       setTransactionStatus({ status: "idle", message: "" });
@@ -160,26 +191,38 @@ const DigitalProductListing: React.FC = () => {
       const main = await uploadFileToPinata(uploadedFiles.mainFile);
       console.log("✅ Main file uploaded:", main.uri);
 
-      // Generate and upload thumbnail (image resize or placeholder)
-      console.log("🔄 Generating thumbnail...");
-      const thumbBlob = await generateThumbnail(uploadedFiles.mainFile);
-      console.log("✅ Thumbnail generated, size:", thumbBlob.size);
+      // Upload thumbnail (either uploaded file or generated from main file)
+      let thumb;
+      if (uploadedFiles.thumbnailFile) {
+        // Use uploaded thumbnail
+        console.log("🔄 Uploading custom thumbnail to Pinata...");
+        thumb = await uploadFileToPinata(uploadedFiles.thumbnailFile);
+        console.log("✅ Custom thumbnail uploaded:", thumb.uri);
+      } else {
+        // Generate thumbnail from main file
+        console.log("🔄 Generating thumbnail from main file...");
+        const thumbBlob = await generateThumbnail(uploadedFiles.mainFile);
+        console.log("✅ Thumbnail generated, size:", thumbBlob.size);
 
-      console.log("🔄 Uploading thumbnail to Pinata...");
-      const thumb = await uploadFileToPinata(
-        thumbBlob,
-        `${uploadedFiles.mainFile.name}-thumb.jpg`
-      );
-      console.log("✅ Thumbnail uploaded:", thumb.uri);
+        console.log("🔄 Uploading generated thumbnail to Pinata...");
+        thumb = await uploadFileToPinata(
+          thumbBlob,
+          `${uploadedFiles.mainFile.name}-thumb.jpg`
+        );
+        console.log("✅ Generated thumbnail uploaded:", thumb.uri);
+      }
 
       setTransactionStatus({
         status: "pending",
         message: "Creating product on blockchain...",
       });
 
+      // Store original filename in description for reliable download
+      const descriptionWithFilename = `${formData.description}\n\n[FILENAME:${uploadedFiles.mainFile.name}]`;
+
       const result = await createProduct(
         formData.name,
-        formData.description,
+        descriptionWithFilename,
         category,
         formData.price,
         main.uri,
@@ -194,12 +237,20 @@ const DigitalProductListing: React.FC = () => {
           productId: result.productId,
         });
         setFormData({ name: "", description: "", price: "" });
-        setUploadedFiles({ mainFile: null });
+        setUploadedFiles({ mainFile: null, thumbnailFile: null });
       } else {
-        setTransactionStatus({
-          status: "error",
-          message: result.error || "Failed to create product",
-        });
+        // Check if it's a pause error and handle it with popup
+        if (handlePauseError(result.error || "")) {
+          setTransactionStatus({
+            status: "idle",
+            message: "",
+          });
+        } else {
+          setTransactionStatus({
+            status: "error",
+            message: result.error || "Failed to create product",
+          });
+        }
       }
     } catch (err: any) {
       console.error("❌ Error details:", err);
@@ -220,10 +271,18 @@ const DigitalProductListing: React.FC = () => {
         errorMessage = err.message;
       }
 
-      setTransactionStatus({
-        status: "error",
-        message: errorMessage,
-      });
+      // Check if it's a pause error and handle it with popup
+      if (handlePauseError(errorMessage)) {
+        setTransactionStatus({
+          status: "idle",
+          message: "",
+        });
+      } else {
+        setTransactionStatus({
+          status: "error",
+          message: errorMessage,
+        });
+      }
     }
   };
 
@@ -389,6 +448,20 @@ const DigitalProductListing: React.FC = () => {
                   <FileUploadInterface onFilesSelected={handleFilesSelected} />
                 </div>
 
+                {/* Thumbnail Upload Section */}
+                <div className="mt-6">
+                  <ThumbnailUpload
+                    onFileSelected={handleThumbnailSelected}
+                    className="mb-4"
+                  />
+                  {!uploadedFiles.thumbnailFile && uploadedFiles.mainFile && (
+                    <div className="text-sm text-slate-400 mt-2">
+                      💡 Tip: Upload a custom thumbnail or we'll generate one
+                      from your main file
+                    </div>
+                  )}
+                </div>
+
                 <motion.button
                   type="submit"
                   disabled={
@@ -496,7 +569,13 @@ const DigitalProductListing: React.FC = () => {
             {uploadedFiles.mainFile
               ? `ipfs://${uploadedFiles.mainFile.name}`
               : "ipfs://..."}
-            ", "ipfs://placeholder-thumbnail" )
+            ", "
+            {uploadedFiles.thumbnailFile
+              ? `ipfs://${uploadedFiles.thumbnailFile.name}`
+              : uploadedFiles.mainFile
+              ? "ipfs://generated-thumbnail"
+              : "ipfs://placeholder-thumbnail"}
+            " )
           </motion.div>
         )}
       </div>

@@ -271,11 +271,11 @@ contract Marketplace is ReentrancyGuard, Ownable, Pausable {
         require(sent, "Failed to send payment to seller");
 
         // Refund any excess
-        if (msg.value > product.price) {
-            uint256 refund = msg.value - product.price;
-            (bool refunded, ) = payable(msg.sender).call{value: refund}("");
-            require(refunded, "Refund failed");
-        }
+        // if (msg.value > product.price) {
+        //     uint256 refund = msg.value - product.price;
+        //     (bool refunded, ) = payable(msg.sender).call{value: refund}("");
+        //     require(refunded, "Refund failed");
+        // }
 
         emit ProductPurchased(
             _productId,
@@ -291,13 +291,13 @@ contract Marketplace is ReentrancyGuard, Ownable, Pausable {
     /**
      * @dev Returns all products.
      */
-    function getAllProducts() public view returns (Product[] memory) {
-        Product[] memory allProducts = new Product[](productCount);
-        for (uint256 i = 1; i <= productCount; i++) {
-            allProducts[i - 1] = products[i];
-        }
-        return allProducts;
-    }
+    // function getAllProducts() public view returns (Product[] memory) {
+    //     Product[] memory allProducts = new Product[](productCount);
+    //     for (uint256 i = 1; i <= productCount; i++) {
+    //         allProducts[i - 1] = products[i];
+    //     }
+    //     return allProducts;
+    // }
 
     /**
      * @dev Alias of getAllProducts; kept for frontend semantics.

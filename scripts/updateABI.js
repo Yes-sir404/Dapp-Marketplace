@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-async function updateContractConfig() {
+async function updateABI() {
   try {
     // Path to compiled contract
     const contractPath = path.join(
@@ -9,11 +9,8 @@ async function updateContractConfig() {
       "../artifacts/contracts/Marketplace.sol/Marketplace.json"
     );
 
-    // Path to your config file
-    const configPath = path.join(
-      __dirname,
-      "../frontend/src/contracts/contractConfig.ts"
-    );
+    // Path to ABI file
+    const abiPath = path.join(__dirname, "../frontend/src/ABI.ts");
 
     // Check if compiled contract exists
     if (!fs.existsSync(contractPath)) {
@@ -27,27 +24,25 @@ async function updateContractConfig() {
     const contractJSON = JSON.parse(fs.readFileSync(contractPath, "utf8"));
     const newABI = contractJSON.abi;
 
-    // Read your current config
-    let configContent = fs.readFileSync(configPath, "utf8");
+    // Create the new ABI content
+    const abiContent = `export const MARKETPLACE_ABI_VAR = ${JSON.stringify(
+      newABI,
+      null,
+      2
+    )} as const;
+`;
 
-    // Replace the ABI
-    const abiString = JSON.stringify(newABI, null, 2);
-    const abiPattern = /export const MARKETPLACE_ABI = \[[\s\S]*?\];/;
-    const newABIExport = `export const MARKETPLACE_ABI = ${abiString};`;
+    // Write to ABI file
+    fs.writeFileSync(abiPath, abiContent);
 
-    configContent = configContent.replace(abiPattern, newABIExport);
-
-    // Write back to file
-    fs.writeFileSync(configPath, configContent);
-
-    console.log("✅ Contract config updated successfully");
-    console.log("📄 Remember to update CONTRACT_ADDRESS if you redeployed");
+    console.log("✅ ABI.ts updated successfully");
+    console.log("📄 ABI now matches the compiled contract");
   } catch (error) {
-    console.error("❌ Error updating contract config:", error);
+    console.error("❌ Error updating ABI:", error);
   }
 }
 
-updateContractConfig()
+updateABI()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

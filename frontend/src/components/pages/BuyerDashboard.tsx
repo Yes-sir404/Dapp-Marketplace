@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ShoppingCart,
   DollarSign,
@@ -19,7 +20,11 @@ import { useWallet } from "../../hooks/useWallet";
 import { useMarketplace } from "../../hooks/useMarketplace";
 import { useNotifications } from "../../hooks/useNotifications";
 import { useNotificationContext } from "../../contexts/NotificationContext";
-import { downloadFile, getFileNameFromUri } from "../../utils/download";
+import {
+  downloadFile,
+  getFileNameFromUri,
+  extractOriginalFilename,
+} from "../../utils/download";
 
 interface BuyerStats {
   totalPurchases: number;
@@ -40,6 +45,7 @@ interface PurchaseNotification {
 }
 
 const BuyerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<BuyerStats | null>(null);
   const [notifications, setNotifications] = useState<PurchaseNotification[]>(
     []
@@ -51,13 +57,15 @@ const BuyerDashboard: React.FC = () => {
   >("overview");
 
   const { account, signer } = useWallet();
-  const {
-    getPurchasedProducts,
-    weiToBdag,
-    isContractConnected,
-  } = useMarketplace(signer);
+  const { getPurchasedProducts, weiToBdag, isContractConnected } =
+    useMarketplace(signer);
   const { getBuyerEvents } = useNotifications();
   const { addPopupNotification } = useNotificationContext();
+
+  // Navigate to product details page
+  const handleProductClick = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
 
   const loadBuyerData = useCallback(async () => {
     if (!signer || !isContractConnected || !account) return;
@@ -154,7 +162,12 @@ const BuyerDashboard: React.FC = () => {
     }
 
     try {
-      const fileName = getFileNameFromUri(product.uri, product.name);
+      const originalFilename = extractOriginalFilename(product.description);
+      const fileName = await getFileNameFromUri(
+        product.uri,
+        product.name,
+        originalFilename || undefined
+      );
       await downloadFile(product.uri, fileName);
     } catch (error: any) {
       console.error("Download failed:", error);
@@ -222,19 +235,6 @@ const BuyerDashboard: React.FC = () => {
                   className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
                 />
                 Refresh
-              </button>
-              <button
-                onClick={() => {
-                  addPopupNotification({
-                    type: "success",
-                    title: "Test Notification",
-                    message: "This is a test popup notification!",
-                    duration: 5000,
-                  });
-                }}
-                className="px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                Test Popup
               </button>
             </div>
           </div>
@@ -541,7 +541,8 @@ const BuyerDashboard: React.FC = () => {
                       {stats.purchasedProducts.map((product) => (
                         <div
                           key={product.id}
-                          className="bg-slate-800 rounded-xl p-6 border border-slate-700"
+                          className="bg-slate-800 rounded-xl p-6 border border-slate-700 cursor-pointer hover:bg-slate-750 transition-colors"
+                          onClick={() => handleProductClick(product.id)}
                         >
                           <div className="flex items-start justify-between mb-4">
                             <h4 className="font-semibold text-lg">
@@ -580,14 +581,25 @@ const BuyerDashboard: React.FC = () => {
                             </div>
                             <div className="flex gap-2 pt-2">
                               <button
-                                onClick={() => handleDownload(product)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(product);
+                                }}
                                 className="flex-1 bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                               >
                                 <Download className="w-4 h-4" />
                                 Download
                               </button>
-                              <button className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleProductClick(product.id);
+                                }}
+                                className="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors flex items-center justify-center gap-2"
+                                title="View product details"
+                              >
                                 <Eye className="w-4 h-4" />
+                                View
                               </button>
                             </div>
                           </div>

@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { motion } from "framer-motion";
 import { CheckCircle, AlertTriangle, Info, X } from "lucide-react";
 
 export interface PopupNotification {
@@ -58,12 +57,8 @@ const PopupNotification: React.FC<PopupNotificationProps> = ({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 300, scale: 0.8 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 300, scale: 0.8 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`fixed top-4 right-4 w-80 p-4 rounded-xl border shadow-xl z-50 ${getTypeStyles(
+    <div
+      className={`w-80 p-4 rounded-xl border shadow-xl ${getTypeStyles(
         notification.type
       )}`}
     >
@@ -84,7 +79,7 @@ const PopupNotification: React.FC<PopupNotificationProps> = ({
           <p className="text-slate-300 text-sm mt-1">{notification.message}</p>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

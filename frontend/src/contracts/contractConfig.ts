@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 // import marketplaceArtifact from "../../../artifacts/contracts/Marketplace.sol/Marketplace.json";
 import { MARKETPLACE_ABI_VAR } from "../ABI";
 // Your deployed contract address (you'll get this after deploying)
-export const CONTRACT_ADDRESS = "0xCE97dd23D9F6768194C88E4e83C9586313Eba5C3";
+export const CONTRACT_ADDRESS = "0xC2124bdE78A2425c1992a258D07e7f34c399Cd00";
 
 // ABI (Application Binary Interface) - tells frontend how to talk to your contract
 // This is generated when you compile your Solidity contract

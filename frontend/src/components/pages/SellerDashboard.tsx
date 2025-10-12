@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TrendingUp,
   DollarSign,
@@ -10,6 +11,7 @@ import {
   BarChart3,
   AlertTriangle,
   Loader,
+  Eye,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWallet } from "../../hooks/useWallet";
@@ -37,6 +39,7 @@ interface SaleNotification {
 }
 
 const SellerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<SellerStats | null>(null);
   const [localNotifications, setLocalNotifications] = useState<
     SaleNotification[]
@@ -52,7 +55,12 @@ const SellerDashboard: React.FC = () => {
     useMarketplace(signer);
   const { notifications, getSellerEvents, markAsRead, dismissNotification } =
     useNotifications();
-  const { addPopupNotification } = useNotificationContext();
+  const {} = useNotificationContext();
+
+  // Navigate to product details page
+  const handleProductClick = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
 
   const loadSellerData = useCallback(async () => {
     if (!signer || !isContractConnected || !account) return;
@@ -210,19 +218,6 @@ const SellerDashboard: React.FC = () => {
                   className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
                 />
                 Refresh
-              </button>
-              <button
-                onClick={() => {
-                  addPopupNotification({
-                    type: "success",
-                    title: "Test Notification",
-                    message: "This is a test popup notification!",
-                    duration: 5000,
-                  });
-                }}
-                className="px-4 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                Test Popup
               </button>
             </div>
           </div>
@@ -432,7 +427,8 @@ const SellerDashboard: React.FC = () => {
                       {stats.products.map((product) => (
                         <div
                           key={product.id}
-                          className="bg-slate-800 rounded-xl p-6 border border-slate-700"
+                          className="bg-slate-800 rounded-xl p-6 border border-slate-700 cursor-pointer hover:bg-slate-750 transition-colors"
+                          onClick={() => handleProductClick(product.id)}
                         >
                           <div className="flex items-start justify-between mb-4">
                             <h4 className="font-semibold text-lg">
@@ -475,6 +471,20 @@ const SellerDashboard: React.FC = () => {
                                 BDAG
                               </span>
                             </div>
+                          </div>
+
+                          {/* View Details Button */}
+                          <div className="mt-4 pt-4 border-t border-slate-700">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleProductClick(product.id);
+                              }}
+                              className="w-full px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors duration-200 flex items-center justify-center space-x-2"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View Details</span>
+                            </button>
                           </div>
                         </div>
                       ))}

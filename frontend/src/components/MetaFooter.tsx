@@ -1,9 +1,17 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Github, Twitter, Instagram } from "lucide-react";
+import {
+  Github,
+  Twitter,
+  Instagram,
+  ChevronDown,
+  LogOut,
+  ShoppingCart,
+} from "lucide-react";
 interface FooterProps {
   account: string | null;
   onConnectWallet: () => void;
+  onDisconnectWallet: () => void;
   isConnecting: boolean;
 }
 
@@ -29,8 +37,26 @@ const socialLinks = [
 const MetaFooter: React.FC<FooterProps> = ({
   account,
   onConnectWallet,
+  onDisconnectWallet,
   isConnecting,
 }) => {
+  const [isWalletMenuOpen, setIsWalletMenuOpen] = useState(false);
+  const walletMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close wallet menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        walletMenuRef.current &&
+        !walletMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsWalletMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -48,11 +74,11 @@ const MetaFooter: React.FC<FooterProps> = ({
               className="md:col-span-1"
             >
               <div className="flex items-center space-x-3 mb-4">
-                <div className="bg-gradient-to-tr from-blue-500 to-purple-600 rounded-xl w-10 h-10 flex items-center justify-center font-bold text-lg text-white shadow-lg">
-                  M9
+                <div className="bg-gradient-to-tr from-blue-500 to-purple-600 rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
+                  <ShoppingCart className="w-6 h-6 text-white" />
                 </div>
                 <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-extrabold text-xl">
-                  MetaSou9
+                  MetaMarket
                 </span>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed mb-4">
@@ -138,31 +164,72 @@ const MetaFooter: React.FC<FooterProps> = ({
                 <h4 className="text-white font-medium mb-3 text-sm">
                   Quick Connect
                 </h4>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={onConnectWallet}
-                  disabled={isConnecting}
-                  className={`px-6 py-2 rounded-full font-medium transition-all duration-200 ${
-                    account
-                      ? "bg-green-600 hover:bg-green-700 text-white"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                  } ${isConnecting ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  {isConnecting ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Connecting...</span>
-                    </div>
-                  ) : account ? (
-                    <div className="flex items-center space-x-2">
+                {account ? (
+                  <div className="relative" ref={walletMenuRef}>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setIsWalletMenuOpen(!isWalletMenuOpen)}
+                      className="px-6 py-2 rounded-full font-medium transition-all duration-200 bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
+                    >
                       <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                       <span>{formatAddress(account)}</span>
-                    </div>
-                  ) : (
-                    "Connect Wallet"
-                  )}
-                </motion.button>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          isWalletMenuOpen ? "rotate-180" : "rotate-0"
+                        }`}
+                      />
+                    </motion.button>
+                    {isWalletMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="absolute right-0 mt-2 w-56 bg-gray-900/95 backdrop-blur border border-gray-800 rounded-xl shadow-xl overflow-hidden"
+                      >
+                        <div className="py-2">
+                          <div className="px-4 py-2 text-sm text-gray-300 border-b border-gray-800">
+                            <div className="font-medium text-white">
+                              Connected Wallet
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {account}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              onDisconnectWallet();
+                              setIsWalletMenuOpen(false);
+                            }}
+                            className="w-full flex items-center px-4 py-2 text-sm text-red-300 hover:bg-gray-800 hover:text-red-200 transition-colors cursor-pointer"
+                          >
+                            <LogOut className="w-4 h-4 mr-2" />
+                            Disconnect Wallet
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onConnectWallet}
+                    disabled={isConnecting}
+                    className={`px-6 py-2 rounded-full font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white ${
+                      isConnecting ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {isConnecting ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Connecting...</span>
+                      </div>
+                    ) : (
+                      "Connect Wallet"
+                    )}
+                  </motion.button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -176,7 +243,8 @@ const MetaFooter: React.FC<FooterProps> = ({
             className="border-t border-gray-700/50 pt-8 mt-12 flex flex-col md:flex-row justify-between items-center gap-4"
           >
             <div className="text-gray-400 text-sm">
-              © 2024 MetaSou9. All rights reserved. Built on Ethereum.
+              © 2025 MetaMarket. All rights reserved. Built on Ethereum. By
+              YES-SIR404
             </div>
 
             {/* Blockchain Badges */}

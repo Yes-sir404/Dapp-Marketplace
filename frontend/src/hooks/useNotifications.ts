@@ -113,12 +113,18 @@ export const useNotifications = () => {
                   label: "Download",
                   onClick: async () => {
                     try {
-                      const { downloadFile, getFileNameFromUri } = await import(
-                        "../utils/download"
+                      const {
+                        downloadFile,
+                        getFileNameFromUri,
+                        extractOriginalFilename,
+                      } = await import("../utils/download");
+                      const originalFilename = extractOriginalFilename(
+                        product.description
                       );
-                      const fileName = getFileNameFromUri(
+                      const fileName = await getFileNameFromUri(
                         product.uri,
-                        product.name
+                        product.name,
+                        originalFilename || undefined
                       );
                       await downloadFile(product.uri, fileName);
                     } catch (error) {

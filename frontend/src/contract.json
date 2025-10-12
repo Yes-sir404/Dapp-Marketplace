@@ -1,6 +1,6 @@
 {
   "contractName": "Marketplace",
-  "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+  "address": "0xC2124bdE78A2425c1992a258D07e7f34c399Cd00",
   "network": {
     "name": "localhost",
     "chainId": "31337"

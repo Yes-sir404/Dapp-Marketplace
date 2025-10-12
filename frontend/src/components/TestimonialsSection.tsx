@@ -11,7 +11,7 @@ const TestimonialsSection: React.FC = () => {
       avatar: "AC",
       rating: 5,
       comment:
-        "I made my first crypto sale in minutes. Love MetaSou9! The platform is so intuitive and the community is amazing.",
+        "I made my first crypto sale in minutes. Love MetaMarket! The platform is so intuitive and the community is amazing.",
       bgGradient: "from-purple-500/20 to-blue-500/20",
       avatarGradient: "from-purple-500 to-purple-600",
     },
@@ -33,7 +33,7 @@ const TestimonialsSection: React.FC = () => {
       avatar: "MR",
       rating: 5,
       comment:
-        "MetaSou9 revolutionized how I sell my digital content. Direct crypto payments and no platform fees!",
+        "MetaMarket revolutionized how I sell my digital content. Direct crypto payments and no platform fees!",
       bgGradient: "from-green-500/20 to-blue-500/20",
       avatarGradient: "from-green-500 to-green-600",
     },
@@ -65,7 +65,7 @@ const TestimonialsSection: React.FC = () => {
           </h2>
           <p className="text-gray-300 text-lg max-w-3xl mx-auto leading-relaxed">
             Join thousands of creators and collectors who are already thriving
-            on MetaSou9.
+            on MetaMarket.
           </p>
         </motion.div>
 

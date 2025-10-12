@@ -54,7 +54,8 @@ export interface UseMarketplaceReturn {
     category: string,
     priceInBdag: string
   ) => Promise<TransactionResponse>;
-  getAllProducts: () => Promise<Product[]>;
+  getAvailableProducts: () => Promise<Product[]>;
+  getProduct: (productId: string) => Promise<Product | null>;
   getSellerProducts: (sellerAddress: string) => Promise<Product[]>;
   getProductsByCategory: (category: string) => Promise<Product[]>;
   getMarketplaceStats: () => Promise<MarketplaceStats | null>;
@@ -106,6 +107,56 @@ export const useMarketplace = (
   //*********** */ Handle contract error HERE**************************
   const handleContractError = (error: any, operation: string): string => {
     console.error(`❌ ${operation} failed:`, error);
+
+    // Check for marketplace pause error - multiple detection methods
+    if (
+      error.code === "CALL_EXCEPTION" ||
+      error.error?.code === "CALL_EXCEPTION"
+    ) {
+      const errorMessage = error.error?.message || error.message || "";
+
+      // Check for EnforcedPause error data (0xd93c0665 is the error selector)
+      if (error.data === "0xd93c0665" || error.error?.data === "0xd93c0665") {
+        console.log("🛑 Detected EnforcedPause error via data field");
+        return "The marketplace is currently paused for maintenance. Please try again later.";
+      }
+
+      // Check for EnforcedPause in error message
+      if (
+        errorMessage.includes("EnforcedPause") ||
+        errorMessage.includes("execution reverted: EnforcedPause")
+      ) {
+        console.log("🛑 Detected EnforcedPause error via message");
+        return "The marketplace is currently paused for maintenance. Please try again later.";
+      }
+
+      // Check for "unknown custom error" with pause data
+      if (
+        errorMessage.includes("unknown custom error") &&
+        error.data === "0xd93c0665"
+      ) {
+        console.log("🛑 Detected EnforcedPause error via unknown custom error");
+        return "The marketplace is currently paused for maintenance. Please try again later.";
+      }
+    }
+
+    // Check for pause error in nested error structure
+    if (error.error?.error?.message?.includes("EnforcedPause")) {
+      console.log("🛑 Detected EnforcedPause error via nested structure");
+      return "MARKETPLACE_PAUSED";
+    }
+
+    // Check for pause error in reason
+    if (error.reason?.includes("EnforcedPause")) {
+      console.log("🛑 Detected EnforcedPause error via reason");
+      return "MARKETPLACE_PAUSED";
+    }
+
+    // Check for pause error data in nested structures
+    if (error.error?.data === "0xd93c0665" || error.data === "0xd93c0665") {
+      console.log("🛑 Detected EnforcedPause error via nested data");
+      return "MARKETPLACE_PAUSED";
+    }
 
     // User rejected or insufficient funds
     if (error.code === "INSUFFICIENT_FUNDS") return "Insufficient funds";
@@ -264,12 +315,12 @@ export const useMarketplace = (
     [getContract]
   );
 
-  const getAllProducts = useCallback(async (): Promise<Product[]> => {
+  const getAvailableProducts = useCallback(async (): Promise<Product[]> => {
     setIsLoading(true);
     setError(null);
     try {
       const contract = await getContract();
-      const products = await contract.getAllProducts();
+      const products = await contract.getAvailableProducts();
       return products.map((p: any) => ({
         id: p.id.toString(),
         name: p.name,
@@ -282,12 +333,43 @@ export const useMarketplace = (
         salesCount: p.salesCount.toString(),
       }));
     } catch (error) {
-      setError(handleContractError(error, "fetch all products"));
+      setError(handleContractError(error, "fetch available products"));
       return [];
     } finally {
       setIsLoading(false);
     }
   }, [getContract]);
+
+  const getProduct = useCallback(
+    async (productId: string): Promise<Product | null> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const contract = await getContract();
+        const id = parseInt(productId);
+        if (isNaN(id) || id <= 0) throw new Error("Invalid product ID");
+
+        const product = await contract.getProduct(id);
+        return {
+          id: product.id.toString(),
+          name: product.name,
+          description: product.description,
+          category: product.category,
+          uri: product.uri,
+          thumbnailUri: product.thumbnailUri,
+          price: product.price.toString(),
+          seller: product.seller,
+          salesCount: product.salesCount.toString(),
+        };
+      } catch (error) {
+        setError(handleContractError(error, "fetch product"));
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [getContract]
+  );
 
   const getSellerProducts = useCallback(
     async (sellerAddress: string): Promise<Product[]> => {
@@ -504,7 +586,8 @@ export const useMarketplace = (
     purchaseProduct,
     updateProduct,
     updateProductMedia,
-    getAllProducts,
+    getAvailableProducts,
+    getProduct,
     getSellerProducts,
     getProductsByCategory,
     getMarketplaceStats,

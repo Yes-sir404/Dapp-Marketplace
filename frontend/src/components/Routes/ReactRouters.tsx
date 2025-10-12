@@ -5,6 +5,8 @@ import DigitalProductListing from "../pages/DigitalProductListing";
 import AdminDashboard from "../pages/AdminDashboard";
 import SellerDashboard from "../pages/SellerDashboard";
 import BuyerDashboard from "../pages/BuyerDashboard";
+import ProductDetails from "../pages/ProductDetails";
+import EditProduct from "../pages/EditProduct";
 // import ScrollToTop from "./ScrollToTop"; // Import the ScrollToTop component
 
 function ReactRouters() {
@@ -18,6 +20,8 @@ function ReactRouters() {
           path="/digital-marketplace-listing"
           element={<DigitalProductListing />}
         />
+        <Route path="/product/:productId" element={<ProductDetails />} />
+        <Route path="/edit-product/:productId" element={<EditProduct />} />
         <Route path="/moul_shi" element={<AdminDashboard />} />
         <Route path="/seller-dashboard" element={<SellerDashboard />} />
         <Route path="/buyer-dashboard" element={<BuyerDashboard />} />

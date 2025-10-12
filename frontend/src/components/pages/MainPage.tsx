@@ -9,12 +9,14 @@ import MetaFooter from "../MetaFooter.tsx";
 import TestimonialsSection from "../TestimonialsSection.tsx";
 
 function MainPage() {
-  const { account, connectWallet, isConnecting, error } = useWallet();
+  const { account, connectWallet, disconnectWallet, isConnecting, error } =
+    useWallet();
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
       <Navbar
         account={account}
         onConnectWallet={connectWallet}
+        onDisconnectWallet={disconnectWallet}
         isConnecting={isConnecting}
       />
 
@@ -30,7 +32,7 @@ function MainPage() {
       )}
 
       {/* Main Content */}
-      <main className="pt-16">
+      <main className="pt-10">
         <div id="#Home">
           <Web3Marketplace account={account} />
         </div>
@@ -50,6 +52,7 @@ function MainPage() {
           <MetaFooter
             account={account}
             onConnectWallet={connectWallet}
+            onDisconnectWallet={disconnectWallet}
             isConnecting={isConnecting}
           />
         </div>

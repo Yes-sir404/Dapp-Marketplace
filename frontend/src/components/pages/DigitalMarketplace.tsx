@@ -1,11 +1,10 @@
 // frontend/src/components/marketplace/DigitalMarketplace.tsx
 
 import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
-  Heart,
   ShoppingCart,
-  Star,
   Wallet,
   Loader,
   RefreshCw,
@@ -13,12 +12,23 @@ import {
   Package,
   Download,
   CheckCircle,
+  Eye,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWallet } from "../../hooks/useWallet";
 import { useMarketplace } from "../../hooks/useMarketplace";
+import { useNotificationContext } from "../../contexts/NotificationContext";
 import { formatEther } from "ethers";
-import { downloadFile, getFileNameFromUri } from "../../utils/download";
+import {
+  downloadFile,
+  getFileNameFromUri,
+  extractOriginalFilename,
+} from "../../utils/download";
+import IpfsImage from "../IpfsImage";
+import { testFailingUrl, testMultipleUrls } from "../../utils/ipfsTest";
+import FileUploadInterface from "../FileUploadInterface";
+import ThumbnailUpload from "../ThumbnailUpload";
+import { uploadFileToPinata } from "../../services/pinata";
 
 interface Product {
   id: string;
@@ -33,9 +43,9 @@ interface Product {
 }
 
 const DigitalMarketplace: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -61,12 +71,14 @@ const DigitalMarketplace: React.FC = () => {
     price: string;
     uri: string;
     thumbnailUri: string;
+    newProductFile: File | null;
+    newThumbnailFile: File | null;
   } | null>(null);
 
   // Wallet and contract hooks
   const { account, signer, connectWallet, isConnecting } = useWallet();
   const {
-    getAllProducts,
+    getAvailableProducts,
     getProductsByCategory,
     purchaseProduct,
     updateProduct,
@@ -80,6 +92,29 @@ const DigitalMarketplace: React.FC = () => {
     getSellerProducts,
     hasUserPurchased,
   } = useMarketplace(signer);
+  const { addPopupNotification } = useNotificationContext();
+
+  // Helper function to handle pause errors
+  const handlePauseError = (error: string) => {
+    if (
+      error.includes("marketplace is currently paused") ||
+      error.includes("maintenance")
+    ) {
+      addPopupNotification({
+        type: "warning",
+        title: "Marketplace Temporarily Unavailable",
+        message: error,
+        duration: 8000,
+      });
+      return true;
+    }
+    return false;
+  };
+
+  // Navigate to product details page
+  const handleProductClick = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
 
   // Load products from blockchain
   const loadProducts = useCallback(async () => {
@@ -100,7 +135,7 @@ const DigitalMarketplace: React.FC = () => {
           `✅ Loaded ${blockchainProducts.length} products in category: ${selectedCategory}`
         );
       } else {
-        blockchainProducts = await getAllProducts();
+        blockchainProducts = await getAvailableProducts();
         console.log("✅ Loaded all products:", blockchainProducts.length);
       }
 
@@ -113,7 +148,7 @@ const DigitalMarketplace: React.FC = () => {
   }, [
     signer,
     isContractConnected,
-    getAllProducts,
+    getAvailableProducts,
     getProductsByCategory,
     selectedCategory,
     contractAddress,
@@ -206,6 +241,18 @@ const DigitalMarketplace: React.FC = () => {
     }
   }, [products, showMyPurchases, checkPurchaseStatus]);
 
+  // Test IPFS URL function (available in console)
+  useEffect(() => {
+    // Make test functions available globally for debugging
+    (window as any).testIpfsUrl = testFailingUrl;
+    (window as any).testMultipleIpfsUrls = testMultipleUrls;
+    console.log("🧪 IPFS test functions available:");
+    console.log("  - window.testIpfsUrl() - Test single failing URL");
+    console.log(
+      "  - window.testMultipleIpfsUrls() - Test multiple failing URLs"
+    );
+  }, []);
+
   // Filter products based on search and category, and hide own/purchased by default
   useEffect(() => {
     const q = searchQuery.toLowerCase();
@@ -246,13 +293,6 @@ const DigitalMarketplace: React.FC = () => {
     purchasedProductIds,
   ]);
 
-  const toggleLike = (id: string) => {
-    const next = new Set(likedItems);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setLikedItems(next);
-  };
-
   const handleEditProduct = (product: Product) => {
     setEditProduct({
       id: product.id,
@@ -265,7 +305,13 @@ const DigitalMarketplace: React.FC = () => {
       price: weiToBdag(product.price),
       uri: product.uri || "",
       thumbnailUri: product.thumbnailUri || "",
+      newProductFile: null,
+      newThumbnailFile: null,
     });
+  };
+
+  const handleEditProductInPage = (productId: string) => {
+    navigate(`/edit-product/${productId}`);
   };
 
   const handleUpdateProduct = async () => {
@@ -310,19 +356,39 @@ const DigitalMarketplace: React.FC = () => {
           5000
         );
       } else {
-        setPurchaseStatus({
-          productId: editProduct.id,
-          status: "error",
-          message: result.error || "Update failed",
-        });
+        // Check if it's a pause error and handle it with popup
+        if (handlePauseError(result.error || "")) {
+          setPurchaseStatus({
+            productId: editProduct.id,
+            status: "idle",
+            message: "",
+          });
+        } else {
+          setPurchaseStatus({
+            productId: editProduct.id,
+            status: "error",
+            message: result.error || "Update failed",
+          });
+        }
       }
     } catch (error: any) {
       console.error("❌ Update error:", error);
-      setPurchaseStatus({
-        productId: editProduct.id,
-        status: "error",
-        message: error.message || "An unexpected error occurred",
-      });
+
+      // Check if it's a pause error and handle it with popup
+      const errorMessage = error.message || "An unexpected error occurred";
+      if (handlePauseError(errorMessage)) {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "idle",
+          message: "",
+        });
+      } else {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "error",
+          message: errorMessage,
+        });
+      }
     }
   };
 
@@ -332,14 +398,50 @@ const DigitalMarketplace: React.FC = () => {
     setPurchaseStatus({
       productId: editProduct.id,
       status: "pending",
-      message: "Updating product media...",
+      message: "Uploading files and updating product media...",
     });
 
     try {
+      let productUri = editProduct.uri;
+      let thumbnailUri = editProduct.thumbnailUri;
+
+      // Upload new product file if provided
+      if (editProduct.newProductFile) {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "pending",
+          message: "Uploading product file to IPFS...",
+        });
+        const productUpload = await uploadFileToPinata(
+          editProduct.newProductFile
+        );
+        productUri = productUpload.uri;
+      }
+
+      // Upload new thumbnail if provided
+      if (editProduct.newThumbnailFile) {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "pending",
+          message: "Uploading thumbnail to IPFS...",
+        });
+        const thumbnailUpload = await uploadFileToPinata(
+          editProduct.newThumbnailFile
+        );
+        thumbnailUri = thumbnailUpload.uri;
+      }
+
+      // Update the product media on blockchain
+      setPurchaseStatus({
+        productId: editProduct.id,
+        status: "pending",
+        message: "Updating product media on blockchain...",
+      });
+
       const result = await updateProductMedia(
         editProduct.id,
-        editProduct.uri,
-        editProduct.thumbnailUri
+        productUri,
+        thumbnailUri
       );
 
       if (result.success) {
@@ -366,19 +468,39 @@ const DigitalMarketplace: React.FC = () => {
           5000
         );
       } else {
-        setPurchaseStatus({
-          productId: editProduct.id,
-          status: "error",
-          message: result.error || "Media update failed",
-        });
+        // Check if it's a pause error and handle it with popup
+        if (handlePauseError(result.error || "")) {
+          setPurchaseStatus({
+            productId: editProduct.id,
+            status: "idle",
+            message: "",
+          });
+        } else {
+          setPurchaseStatus({
+            productId: editProduct.id,
+            status: "error",
+            message: result.error || "Media update failed",
+          });
+        }
       }
     } catch (error: any) {
       console.error("❌ Media update error:", error);
-      setPurchaseStatus({
-        productId: editProduct.id,
-        status: "error",
-        message: error.message || "An unexpected error occurred",
-      });
+
+      // Check if it's a pause error and handle it with popup
+      const errorMessage = error.message || "An unexpected error occurred";
+      if (handlePauseError(errorMessage)) {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "idle",
+          message: "",
+        });
+      } else {
+        setPurchaseStatus({
+          productId: editProduct.id,
+          status: "error",
+          message: errorMessage,
+        });
+      }
     }
   };
 
@@ -389,7 +511,12 @@ const DigitalMarketplace: React.FC = () => {
     }
 
     try {
-      const fileName = getFileNameFromUri(product.uri, product.name);
+      const originalFilename = extractOriginalFilename(product.description);
+      const fileName = await getFileNameFromUri(
+        product.uri,
+        product.name,
+        originalFilename || undefined
+      );
       await downloadFile(product.uri, fileName);
     } catch (error: any) {
       console.error("Download failed:", error);
@@ -447,7 +574,14 @@ const DigitalMarketplace: React.FC = () => {
         try {
           if (product.uri) {
             console.log("🔄 Auto-downloading purchased file...");
-            const fileName = getFileNameFromUri(product.uri, product.name);
+            const originalFilename = extractOriginalFilename(
+              product.description
+            );
+            const fileName = await getFileNameFromUri(
+              product.uri,
+              product.name,
+              originalFilename || undefined
+            );
             await downloadFile(product.uri, fileName);
             console.log("✅ Auto-download completed");
 
@@ -493,19 +627,39 @@ const DigitalMarketplace: React.FC = () => {
           5000
         );
       } else {
-        setPurchaseStatus({
-          productId: product.id,
-          status: "error",
-          message: result.error || "Purchase failed",
-        });
+        // Check if it's a pause error and handle it with popup
+        if (handlePauseError(result.error || "")) {
+          setPurchaseStatus({
+            productId: product.id,
+            status: "idle",
+            message: "",
+          });
+        } else {
+          setPurchaseStatus({
+            productId: product.id,
+            status: "error",
+            message: result.error || "Purchase failed",
+          });
+        }
       }
     } catch (error: any) {
       console.error("❌ Purchase error:", error);
-      setPurchaseStatus({
-        productId: product.id,
-        status: "error",
-        message: error.message || "An unexpected error occurred",
-      });
+
+      // Check if it's a pause error and handle it with popup
+      const errorMessage = error.message || "An unexpected error occurred";
+      if (handlePauseError(errorMessage)) {
+        setPurchaseStatus({
+          productId: product.id,
+          status: "idle",
+          message: "",
+        });
+      } else {
+        setPurchaseStatus({
+          productId: product.id,
+          status: "error",
+          message: errorMessage,
+        });
+      }
     }
   };
 
@@ -601,9 +755,14 @@ const DigitalMarketplace: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 text-white relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5 bg-dot-pattern"></div>
+
+      {/* Subtle Grid Lines */}
+      <div className="absolute inset-0 opacity-10 bg-grid-pattern"></div>
       {/* Header */}
-      <header className="px-6 py-8">
+      <header className="px-6 py-8 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold mb-2">
@@ -627,7 +786,7 @@ const DigitalMarketplace: React.FC = () => {
                 placeholder="Search digital assets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-slate-400"
+                className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-400 transition-all duration-300"
               />
             </div>
 
@@ -645,7 +804,7 @@ const DigitalMarketplace: React.FC = () => {
                   setTimeout(() => loadProducts(), 100);
                 }
               }}
-              className="px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 text-white"
+              className="px-4 py-3 bg-slate-800/80 backdrop-blur-xl border border-slate-600/50 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white transition-all duration-300"
             >
               {categories.map((category) => (
                 <option key={category} value={category}>
@@ -654,7 +813,9 @@ const DigitalMarketplace: React.FC = () => {
               ))}
             </select>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 if (showMyPurchases) {
                   loadMyPurchases();
@@ -665,47 +826,51 @@ const DigitalMarketplace: React.FC = () => {
                 }
               }}
               disabled={isLoading}
-              className="px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-2xl text-sm font-medium transition-all duration-300 flex items-center gap-2 disabled:opacity-50 shadow-lg hover:shadow-purple-500/25"
             >
               <RefreshCw
                 className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
               />
               Refresh
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setShowMyPurchases(false);
                 setShowMyListings((v) => !v);
               }}
-              className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-slate-700 ${
+              className={`px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300 flex items-center gap-2 border ${
                 showMyListings
-                  ? "bg-slate-700 text-white"
-                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  ? "bg-white/10 backdrop-blur-xl border-white/20 text-white"
+                  : "bg-white/5 backdrop-blur-xl border-white/10 text-gray-300 hover:bg-white/10 hover:border-white/20"
               }`}
             >
               {showMyListings ? "Showing: My Listings" : "My Listings"}
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setShowMyListings(false);
                 setShowMyPurchases((v) => !v);
               }}
-              className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-slate-700 ${
+              className={`px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300 flex items-center gap-2 border ${
                 showMyPurchases
-                  ? "bg-slate-700 text-white"
-                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  ? "bg-white/10 backdrop-blur-xl border-white/20 text-white"
+                  : "bg-white/5 backdrop-blur-xl border-white/10 text-gray-300 hover:bg-white/10 hover:border-white/20"
               }`}
             >
               {showMyPurchases ? "Showing: My Purchases" : "Show My Purchases"}
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
 
       {/* Main */}
-      <main className="px-6 pb-12">
+      <main className="px-6 pb-12 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
@@ -743,192 +908,288 @@ const DigitalMarketplace: React.FC = () => {
 
           {/* Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
+            {filteredProducts.map((product, index) => (
               <motion.div
                 key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: (parseInt(product.id) % 6) * 0.05 }}
-                className="bg-slate-800 rounded-xl overflow-hidden hover:transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-slate-700"
+                initial={{ opacity: 0, y: 60, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.8, delay: index * 0.1 }}
+                whileHover={{ y: -20, scale: 1.05 }}
+                className="group relative cursor-pointer"
+                onClick={() => handleProductClick(product.id)}
               >
-                {/* Card Header */}
+                {/* Main Card */}
+                <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden hover:border-white/20 transition-all duration-500 shadow-2xl">
+                  {/* Card Header with Gradient */}
+                  <div
+                    className={`relative h-64 bg-gradient-to-br ${getGradient(
+                      product.id
+                    )} overflow-hidden`}
+                  >
+                    {/* Animated Background Pattern */}
+                    <div className="absolute inset-0 opacity-20">
+                      <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent"></div>
+                    </div>
+
+                    {product.thumbnailUri ? (
+                      <IpfsImage
+                        src={product.thumbnailUri}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onLoad={() => {
+                          console.log(
+                            "✅ Thumbnail loaded successfully:",
+                            product.thumbnailUri
+                          );
+                        }}
+                        onError={() => {
+                          console.warn(
+                            "❌ All gateways failed for thumbnail:",
+                            product.thumbnailUri
+                          );
+                        }}
+                        fallbackComponent={
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <motion.div
+                              whileHover={{ scale: 1.2, rotate: 10 }}
+                              transition={{ duration: 0.3 }}
+                              className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center border border-white/20"
+                            >
+                              <div className="text-4xl opacity-60">
+                                {getEmoji(product.id)}
+                              </div>
+                            </motion.div>
+                          </div>
+                        }
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <motion.div
+                          whileHover={{ scale: 1.2, rotate: 10 }}
+                          transition={{ duration: 0.3 }}
+                          className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center border border-white/20"
+                        >
+                          <div className="text-4xl opacity-60">
+                            {getEmoji(product.id)}
+                          </div>
+                        </motion.div>
+                      </div>
+                    )}
+
+                    {/* Category Badge */}
+                    {(() => {
+                      const cat =
+                        product.category ||
+                        product.description.match(/^cat:(.*?)\|(.*)$/)?.[1] ||
+                        "Digital Art";
+                      return (
+                        <div className="absolute top-4 left-4">
+                          <span className="bg-white/20 backdrop-blur-xl border border-white/30 text-white text-sm font-medium px-4 py-2 rounded-full">
+                            {cat}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Sales Count */}
+                    <div className="absolute bottom-4 left-4 flex items-center gap-1 bg-black/30 backdrop-blur-xl rounded-full px-3 py-1 border border-white/20">
+                      <Package className="w-4 h-4 text-white/80" />
+                      <span className="text-white/80 text-sm font-medium">
+                        {product.salesCount} sold
+                      </span>
+                    </div>
+
+                    {/* View Button */}
+                    <div className="absolute top-4 right-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleProductClick(product.id);
+                        }}
+                        className="w-10 h-10 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all duration-300"
+                        title="View product details"
+                      >
+                        <Eye className="w-5 h-5 text-white" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card Content */}
+                  <div className="p-8">
+                    {/* Title */}
+                    <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all duration-300">
+                      {product.name}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-gray-300 text-sm mb-6 line-clamp-2">
+                      {product.category
+                        ? product.description
+                        : product.description.replace(/^cat:(.*?)\|/, "")}
+                    </p>
+
+                    {/* Author */}
+                    <p className="text-gray-400 text-sm mb-6">
+                      by{" "}
+                      <span className="text-white font-medium">
+                        {formatAddress(product.seller)}
+                      </span>
+                    </p>
+
+                    {/* Price Section */}
+                    <div className="mb-8">
+                      <div className="flex items-baseline gap-3 mb-2">
+                        <span className="text-3xl font-bold text-white">
+                          {parseFloat(weiToBdag(product.price)).toFixed(3)} BDAG
+                        </span>
+                      </div>
+                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          whileInView={{ width: "60%" }}
+                          transition={{ duration: 1, delay: 0.5 }}
+                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-center">
+                      {product.seller.toLowerCase() ===
+                      account.toLowerCase() ? (
+                        <div className="flex flex-col gap-3 w-full">
+                          <div className="px-6 py-3 rounded-2xl bg-blue-500/20 text-blue-300 border border-blue-500/50 flex items-center justify-center space-x-2">
+                            <Package className="w-5 h-5" />
+                            <span className="font-medium">Your Product</span>
+                          </div>
+                          {showMyListings && (
+                            <div className="flex gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditProduct(product);
+                                }}
+                                className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-blue-500/25"
+                                title="Edit in modal"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                                <span>Quick Edit</span>
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditProductInPage(product.id);
+                                }}
+                                className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white py-3 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-purple-500/25"
+                                title="Edit in full page"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                                <span>Full Edit</span>
+                              </motion.button>
+                            </div>
+                          )}
+                        </div>
+                      ) : purchasedProductIds.has(product.id) ? (
+                        <div className="flex flex-col gap-3 w-full">
+                          <div className="px-6 py-3 rounded-2xl bg-green-500/20 text-green-300 border border-green-500/50 flex items-center justify-center space-x-2">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-medium">Purchased</span>
+                          </div>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(product);
+                            }}
+                            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-green-500/25"
+                          >
+                            <Download className="w-5 h-5" />
+                            <span>Download</span>
+                          </motion.button>
+                        </div>
+                      ) : (
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePurchase(product);
+                          }}
+                          disabled={
+                            (purchaseStatus.productId === product.id &&
+                              purchaseStatus.status === "pending") ||
+                            isLoading
+                          }
+                          className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white py-4 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl hover:shadow-blue-500/25 relative overflow-hidden group"
+                        >
+                          <span className="relative z-10 flex items-center justify-center gap-2">
+                            {purchaseStatus.productId === product.id &&
+                            purchaseStatus.status === "pending" ? (
+                              <>
+                                <Loader className="w-5 h-5 animate-spin" />
+                                <span>Buying...</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingCart className="w-5 h-5" />
+                                <span>Buy Now</span>
+                              </>
+                            )}
+                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                        </motion.button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Glow Effect */}
                 <div
-                  className={`h-48 bg-slate-900 relative flex items-center justify-center`}
-                >
-                  {product.thumbnailUri ? (
-                    <img
-                      src={
-                        (product.thumbnailUri.startsWith("ipfs://")
-                          ? `https://gateway.pinata.cloud/ipfs/${product.thumbnailUri.replace(
-                              "ipfs://",
-                              ""
-                            )}`
-                          : product.thumbnailUri) as any
-                      }
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
+                  className={`absolute inset-0 bg-gradient-to-br ${getGradient(
+                    product.id
+                  )} opacity-0 group-hover:opacity-20 blur-xl -z-10 transition-opacity duration-500`}
+                ></div>
+
+                {/* Purchase Status */}
+                {purchaseStatus.productId === product.id &&
+                  purchaseStatus.status !== "idle" && (
                     <div
-                      className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${getGradient(
-                        product.id
-                      )}`}
+                      className={`mt-4 p-4 rounded-2xl backdrop-blur-xl border text-sm ${
+                        purchaseStatus.status === "success"
+                          ? "bg-green-500/10 text-green-300 border-green-500/20"
+                          : purchaseStatus.status === "error"
+                          ? "bg-red-500/10 text-red-300 border-red-500/20"
+                          : "bg-blue-500/10 text-blue-300 border-blue-500/20"
+                      }`}
                     >
-                      <div className="text-6xl opacity-30">
-                        {getEmoji(product.id)}
+                      <div className="flex items-center gap-3">
+                        {purchaseStatus.message.includes("Downloading") && (
+                          <Download className="w-5 h-5 animate-pulse" />
+                        )}
+                        {purchaseStatus.status === "success" &&
+                          purchaseStatus.message.includes("downloaded") && (
+                            <CheckCircle className="w-5 h-5" />
+                          )}
+                        {purchaseStatus.status === "error" && (
+                          <AlertCircle className="w-5 h-5" />
+                        )}
+                        <span className="font-medium">
+                          {purchaseStatus.message}
+                        </span>
                       </div>
                     </div>
                   )}
-                  {(() => {
-                    const cat =
-                      product.category ||
-                      product.description.match(/^cat:(.*?)\|(.*)$/)?.[1] ||
-                      "Digital Art";
-                    return (
-                      <span className="absolute top-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full text-xs font-medium">
-                        {cat}
-                      </span>
-                    );
-                  })()}
-                  {/* Sales pill */}
-                  <div className="absolute bottom-4 left-4 bg-black/50 px-3 py-1 rounded-full text-xs">
-                    {product.salesCount} sold
-                  </div>
-                  <button
-                    onClick={() => toggleLike(product.id)}
-                    className="absolute top-4 right-4 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-all duration-200"
-                  >
-                    <Heart
-                      className={`w-5 h-5 ${
-                        likedItems.has(product.id)
-                          ? "text-red-500 fill-current"
-                          : "text-white"
-                      }`}
-                    />
-                  </button>
-                </div>
 
-                {/* Card Content */}
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold mb-2 text-white">
-                    {product.name}
-                  </h3>
-                  <p className="text-slate-400 text-sm mb-4 line-clamp-2">
-                    {product.category
-                      ? product.description
-                      : product.description.replace(/^cat:(.*?)\|/, "")}
-                  </p>
-
-                  <div className="flex items-center justify-between text-sm text-slate-400 mb-4">
-                    <span>by {formatAddress(product.seller)}</span>
-                    <div className="flex items-center">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
-                      <span className="text-white">
-                        4.{Math.floor(Math.random() * 5) + 5}
-                      </span>
-                      <span className="ml-1">
-                        ({Math.floor(Math.random() * 100) + 20})
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xl font-bold text-white">
-                        {parseFloat(weiToBdag(product.price)).toFixed(3)} BDAG
-                      </span>
-                    </div>
-
-                    {product.seller.toLowerCase() === account.toLowerCase() ? (
-                      <div className="flex gap-2">
-                        <div className="px-6 py-2 rounded-lg bg-blue-900/20 text-blue-300 border border-blue-500/50 flex items-center space-x-2">
-                          <Package className="w-4 h-4 fill-current" />
-                          <span>Your Product</span>
-                        </div>
-                        {showMyListings && (
-                          <button
-                            onClick={() => handleEditProduct(product)}
-                            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors duration-200 flex items-center space-x-2"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                            <span>Edit</span>
-                          </button>
-                        )}
-                      </div>
-                    ) : purchasedProductIds.has(product.id) ? (
-                      <div className="flex gap-2">
-                        <div className="px-6 py-2 rounded-lg bg-green-900/20 text-green-300 border border-green-500/50 flex items-center space-x-2">
-                          <Star className="w-4 h-4 fill-current" />
-                          <span>Purchased</span>
-                        </div>
-                        <button
-                          onClick={() => handleDownload(product)}
-                          className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors duration-200 flex items-center space-x-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span>Download</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handlePurchase(product)}
-                        disabled={
-                          (purchaseStatus.productId === product.id &&
-                            purchaseStatus.status === "pending") ||
-                          isLoading
-                        }
-                        className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {purchaseStatus.productId === product.id &&
-                        purchaseStatus.status === "pending" ? (
-                          <>
-                            <Loader className="w-4 h-4 animate-spin" />
-                            <span>Buying...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingCart className="w-4 h-4" />
-                            <span>Buy Now</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Purchase Status */}
-                  {purchaseStatus.productId === product.id &&
-                    purchaseStatus.status !== "idle" && (
-                      <div
-                        className={`mt-3 p-2 rounded text-sm ${
-                          purchaseStatus.status === "success"
-                            ? "bg-green-900/20 text-green-300"
-                            : purchaseStatus.status === "error"
-                            ? "bg-red-900/20 text-red-300"
-                            : "bg-blue-900/20 text-blue-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {purchaseStatus.message.includes("Downloading") && (
-                            <Download className="w-4 h-4 animate-pulse" />
-                          )}
-                          {purchaseStatus.status === "success" &&
-                            purchaseStatus.message.includes("downloaded") && (
-                              <CheckCircle className="w-4 h-4" />
-                            )}
-                          {purchaseStatus.status === "error" && (
-                            <AlertCircle className="w-4 h-4" />
-                          )}
-                          <span>{purchaseStatus.message}</span>
-                        </div>
-                      </div>
-                    )}
-
-                  <div className="mt-3 pt-3 border-t border-slate-700 text-xs text-slate-500">
-                    <div className="flex justify-between">
-                      <span>Product ID: #{product.id}</span>
-                      <span>On-chain</span>
-                    </div>
+                {/* Product Info */}
+                <div className="mt-4 pt-4 border-t border-white/10 text-xs text-gray-400">
+                  <div className="flex justify-between">
+                    <span>Product ID: #{product.id}</span>
+                    <span className="text-green-400">On-chain</span>
                   </div>
                 </div>
               </motion.div>
@@ -966,153 +1227,169 @@ const DigitalMarketplace: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-slate-800 rounded-xl p-6 max-w-md w-full border border-slate-700"
+                className="bg-slate-800 rounded-xl max-w-2xl w-full border border-slate-700 max-h-[90vh] flex flex-col"
               >
-                <h3 className="text-xl font-semibold mb-4 text-white">
-                  Edit Product
-                </h3>
+                {/* Modal Header */}
+                <div className="p-6 border-b border-slate-700">
+                  <h3 className="text-xl font-semibold text-white">
+                    Edit Product
+                  </h3>
+                </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Product Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editProduct.name}
-                      onChange={(e) =>
-                        setEditProduct({ ...editProduct, name: e.target.value })
-                      }
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Product Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editProduct.name}
+                        onChange={(e) =>
+                          setEditProduct({
+                            ...editProduct,
+                            name: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Category
-                    </label>
-                    <select
-                      value={editProduct.category}
-                      onChange={(e) =>
-                        setEditProduct({
-                          ...editProduct,
-                          category: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      {categories
-                        .filter((c) => c !== "All")
-                        .map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Category
+                      </label>
+                      <select
+                        value={editProduct.category}
+                        onChange={(e) =>
+                          setEditProduct({
+                            ...editProduct,
+                            category: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        {categories
+                          .filter((c) => c !== "All")
+                          .map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={editProduct.description}
-                      onChange={(e) =>
-                        setEditProduct({
-                          ...editProduct,
-                          description: e.target.value,
-                        })
-                      }
-                      rows={3}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={editProduct.description}
+                        onChange={(e) =>
+                          setEditProduct({
+                            ...editProduct,
+                            description: e.target.value,
+                          })
+                        }
+                        rows={3}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Price (BDAG)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.001"
-                      min="0"
-                      value={editProduct.price}
-                      onChange={(e) =>
-                        setEditProduct({
-                          ...editProduct,
-                          price: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Price (BDAG)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={editProduct.price}
+                        onChange={(e) =>
+                          setEditProduct({
+                            ...editProduct,
+                            price: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Product URI (IPFS)
-                    </label>
-                    <input
-                      type="text"
-                      value={editProduct.uri}
-                      onChange={(e) =>
-                        setEditProduct({
-                          ...editProduct,
-                          uri: e.target.value,
-                        })
-                      }
-                      placeholder="ipfs://..."
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Update Product File
+                      </label>
+                      <FileUploadInterface
+                        onFilesSelected={(file) =>
+                          setEditProduct({
+                            ...editProduct,
+                            newProductFile: file,
+                          })
+                        }
+                        className="mb-4"
+                      />
+                      {editProduct.newProductFile && (
+                        <div className="text-sm text-green-400 mb-2">
+                          ✅ New file selected:{" "}
+                          {editProduct.newProductFile.name}
+                        </div>
+                      )}
+                      {editProduct.uri && !editProduct.newProductFile && (
+                        <div className="text-sm text-slate-400 mb-2">
+                          Current file: {editProduct.uri.split("/").pop()}
+                        </div>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Thumbnail URI (IPFS)
-                    </label>
-                    <input
-                      type="text"
-                      value={editProduct.thumbnailUri}
-                      onChange={(e) =>
-                        setEditProduct({
-                          ...editProduct,
-                          thumbnailUri: e.target.value,
-                        })
-                      }
-                      placeholder="ipfs://..."
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                    <div>
+                      <ThumbnailUpload
+                        onFileSelected={(file) =>
+                          setEditProduct({
+                            ...editProduct,
+                            newThumbnailFile: file,
+                          })
+                        }
+                        currentThumbnail={editProduct.thumbnailUri}
+                        className="mb-4"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => setEditProduct(null)}
-                    className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-700 rounded-lg text-white font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleUpdateProduct}
-                    disabled={
-                      !editProduct.name.trim() ||
-                      !editProduct.description.trim() ||
-                      !editProduct.category.trim() ||
-                      !editProduct.price ||
-                      parseFloat(editProduct.price) <= 0
-                    }
-                    className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Update Product
-                  </button>
-                  <button
-                    onClick={handleUpdateProductMedia}
-                    disabled={
-                      !editProduct.uri || !editProduct.thumbnailUri || isLoading
-                    }
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Update Media
-                  </button>
+                {/* Modal Footer */}
+                <div className="p-6 border-t border-slate-700">
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setEditProduct(null)}
+                      className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-700 rounded-lg text-white font-medium transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUpdateProduct}
+                      disabled={
+                        !editProduct.name.trim() ||
+                        !editProduct.description.trim() ||
+                        !editProduct.category.trim() ||
+                        !editProduct.price ||
+                        parseFloat(editProduct.price) <= 0
+                      }
+                      className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Update Product Info
+                    </button>
+                    {(editProduct.newProductFile ||
+                      editProduct.newThumbnailFile) && (
+                      <button
+                        onClick={handleUpdateProductMedia}
+                        disabled={isLoading}
+                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Update Media
+                      </button>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             </div>
