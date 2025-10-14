@@ -13,6 +13,8 @@ import {
   Download,
   CheckCircle,
   Eye,
+  ArrowLeft,
+  BarChart3,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWallet } from "../../hooks/useWallet";
@@ -774,6 +776,29 @@ const DigitalMarketplace: React.FC = () => {
             </p>
             <div className="text-sm text-gray-400 mt-2">
               Connected: {formatAddress(account)}
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-6">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl text-white hover:bg-white/20 transition-all duration-300"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Back to Home
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate("/buyer-dashboard")}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white rounded-2xl transition-all duration-300 shadow-lg"
+              >
+                <BarChart3 className="w-5 h-5" />
+                Dashboard
+              </motion.button>
             </div>
           </div>
 
