@@ -91,7 +91,6 @@ const EditProduct: React.FC = () => {
         setError("Product not found");
       }
     } catch (err: any) {
-      console.error("Error loading product:", err);
       setError("Failed to load product");
     } finally {
       setIsLoading(false);
@@ -157,7 +156,6 @@ const EditProduct: React.FC = () => {
         });
       }
     } catch (error: any) {
-      console.error("Error updating product:", error);
       setSaveStatus({
         status: "error",
         message: "Failed to update product",
@@ -239,11 +237,7 @@ const EditProduct: React.FC = () => {
         );
 
         if (!updateResult.success) {
-          console.warn(
-            "Failed to update description with new filename:",
-            updateResult.error
-          );
-          // Don't fail the whole operation, just log the warning
+          // silently continue if description update fails
         }
       }
 
@@ -274,7 +268,6 @@ const EditProduct: React.FC = () => {
         });
       }
     } catch (error: any) {
-      console.error("Error updating media:", error);
       setSaveStatus({
         status: "error",
         message: "Failed to update media",

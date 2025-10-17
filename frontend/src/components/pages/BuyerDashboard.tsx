@@ -19,7 +19,6 @@ import { motion } from "framer-motion";
 import { useWallet } from "../../hooks/useWallet";
 import { useMarketplace } from "../../hooks/useMarketplace";
 import { useNotifications } from "../../hooks/useNotifications";
-import { useNotificationContext } from "../../contexts/NotificationContext";
 import {
   downloadFile,
   getFileNameFromUri,
@@ -60,7 +59,6 @@ const BuyerDashboard: React.FC = () => {
   const { getPurchasedProducts, weiToBdag, isContractConnected } =
     useMarketplace(signer);
   const { getBuyerEvents } = useNotifications();
-  const { addPopupNotification } = useNotificationContext();
 
   // Navigate to product details page
   const handleProductClick = (productId: string) => {
@@ -128,7 +126,6 @@ const BuyerDashboard: React.FC = () => {
         }))
       );
     } catch (error: any) {
-      console.error("Failed to load buyer data:", error);
       setError(error.message || "Failed to load buyer statistics");
     } finally {
       setIsLoading(false);
@@ -170,7 +167,6 @@ const BuyerDashboard: React.FC = () => {
       );
       await downloadFile(product.uri, fileName);
     } catch (error: any) {
-      console.error("Download failed:", error);
       alert(`Download failed: ${error.message}`);
     }
   };

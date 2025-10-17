@@ -4,14 +4,8 @@ import {
   ShoppingCart,
   DollarSign,
   TrendingUp,
-  BarChart3,
-  Coins,
-  Zap,
   Star,
   Shield,
-  Globe,
-  Users,
-  Activity,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -48,8 +42,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ account }) => {
       </div>
 
       {/* Main content container */}
-      <div className="relative z-10 container mx-auto px-10 py-4 flex items-center min-h-screen">
-        <div className="grid lg:grid-cols-2 gap-16 items-center w-full">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 flex items-center min-h-screen">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center w-full">
           {/* Left content */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -59,7 +53,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ account }) => {
           >
             {/* Main heading */}
             <motion.h1
-              className="text-6xl lg:text-7xl font-bold text-white leading-tight"
+              className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white leading-tight"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -73,7 +67,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ account }) => {
 
             {/* Subtitle */}
             <motion.p
-              className="text-2xl lg:text-3xl text-white leading-relaxed max-w-2xl font-medium"
+              className="text-lg sm:text-xl lg:text-3xl text-white leading-relaxed max-w-2xl font-medium"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
@@ -104,7 +98,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ account }) => {
 
             {/* Action buttons */}
             <motion.div
-              className="flex gap-20 pt-4"
+              className="flex flex-col sm:flex-row gap-4 sm:gap-6 lg:gap-20 pt-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1 }}
@@ -116,7 +110,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ account }) => {
                     boxShadow: "0 20px 40px rgba(59, 130, 246, 0.3)",
                   }}
                   whileTap={{ scale: 0.95 }}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-14 py-5 rounded-2xl font-semibold flex items-center gap-3 transition-all duration-300 cursor-pointer"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 sm:px-10 lg:px-14 py-4 sm:py-5 rounded-2xl font-semibold flex items-center justify-center gap-3 transition-all duration-300 cursor-pointer w-full sm:w-auto"
                 >
                   <ShoppingCart size={20} />
                   BUY
@@ -129,7 +123,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ account }) => {
                     boxShadow: "0 20px 40px rgba(59, 130, 246, 0.3)",
                   }}
                   whileTap={{ scale: 0.95 }}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-14 py-5 rounded-2xl font-semibold flex items-center gap-3 transition-all duration-300 cursor-pointer"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 sm:px-10 lg:px-14 py-4 sm:py-5 rounded-2xl font-semibold flex items-center justify-center gap-3 transition-all duration-300 cursor-pointer w-full sm:w-auto"
                 >
                   <DollarSign size={20} />
                   SELL

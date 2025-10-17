@@ -99,7 +99,6 @@ const ProductDetails: React.FC = () => {
         setError("Product not found");
       }
     } catch (err: any) {
-      console.error("Error loading product:", err);
       setError("Failed to load product details");
     } finally {
       setIsLoading(false);
@@ -113,9 +112,7 @@ const ProductDetails: React.FC = () => {
     try {
       const purchased = await checkUserPurchase(productId, account);
       setHasPurchased(purchased);
-    } catch (err) {
-      console.error("Error checking purchase status:", err);
-    }
+    } catch (err) {}
   }, [account, productId, checkUserPurchase]);
 
   // Load product and check purchase status on mount
@@ -175,7 +172,6 @@ const ProductDetails: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.error("Purchase error:", err);
       const errorMsg = err.message || "Purchase failed";
       if (!handlePauseError(errorMsg)) {
         setPurchaseStatus({ status: "error", message: errorMsg });
@@ -202,17 +198,12 @@ const ProductDetails: React.FC = () => {
     }
 
     try {
-      console.log("🔄 Starting download for product:", product.name);
-      console.log("📁 Product URI:", product.uri);
-
       const originalFilename = extractOriginalFilename(product.description);
       const fileName = await getFileNameFromUri(
         product.uri,
         product.name,
         originalFilename || undefined
       );
-      console.log("📄 Generated filename:", fileName);
-
       await downloadFile(product.uri, fileName);
 
       addPopupNotification({
@@ -222,8 +213,6 @@ const ProductDetails: React.FC = () => {
         duration: 3000,
       });
     } catch (err: any) {
-      console.error("Download error:", err);
-
       let errorMessage = "Failed to download the product";
 
       if (err.message) {
@@ -366,18 +355,8 @@ const ProductDetails: React.FC = () => {
                   src={product.thumbnailUri}
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onLoad={() => {
-                    console.log(
-                      "✅ Product image loaded successfully:",
-                      product.thumbnailUri
-                    );
-                  }}
-                  onError={() => {
-                    console.warn(
-                      "❌ All gateways failed for product image:",
-                      product.thumbnailUri
-                    );
-                  }}
+                  onLoad={() => {}}
+                  onError={() => {}}
                   fallbackComponent={
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
                       <motion.div
