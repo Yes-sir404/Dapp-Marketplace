@@ -23,7 +23,7 @@ const TrendingAssetsSection: React.FC = () => {
       title: "The NFT Art of 2099",
       author: "CryptoArtist",
       price: "2.5 BDAG",
-      usdPrice: "$4,750",
+      usdPrice: "$120",
       category: "Digital Art",
       categoryIcon: Download,
       trending: true,
@@ -38,7 +38,7 @@ const TrendingAssetsSection: React.FC = () => {
       title: "Lo-fi Beats Vol. 3",
       author: "BeatCreator",
       price: "0.8 BDAG",
-      usdPrice: "$1,520",
+      usdPrice: "$40",
       category: "Music",
       categoryIcon: Music,
       trending: true,
@@ -53,7 +53,7 @@ const TrendingAssetsSection: React.FC = () => {
       title: "Crypto Trading 2025",
       author: "TradingPro",
       price: "1.2 BDAG",
-      usdPrice: "$570",
+      usdPrice: "$57",
       category: "eBook",
       categoryIcon: BookOpen,
       trending: false,
@@ -74,7 +74,7 @@ const TrendingAssetsSection: React.FC = () => {
   };
 
   return (
-    <section className="py-24 px-4 bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 relative overflow-hidden">
+    <section className="py-16 sm:py-20 lg:py-24 px-4 bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 relative overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5 bg-dot-pattern"></div>
 
@@ -97,14 +97,14 @@ const TrendingAssetsSection: React.FC = () => {
             </span>
           </div>
 
-          <h2 className="text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
             <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
               Hot
             </span>{" "}
             Digital Assets
           </h2>
 
-          <p className="text-gray-300 text-xl max-w-3xl mx-auto leading-relaxed">
+          <p className="text-gray-300 text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
             Discover the most popular and trending digital goods on our
             marketplace. From exclusive NFT art to premium music beats, find
             your next digital treasure.
@@ -118,7 +118,7 @@ const TrendingAssetsSection: React.FC = () => {
             onClick={prevSlide}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-14 h-14 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 shadow-2xl"
+            className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 lg:w-14 h-12 lg:h-14 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full items-center justify-center text-white hover:bg-white/20 transition-all duration-300 shadow-2xl"
           >
             <ChevronLeft size={24} />
           </motion.button>
@@ -127,13 +127,13 @@ const TrendingAssetsSection: React.FC = () => {
             onClick={nextSlide}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-14 h-14 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 shadow-2xl"
+            className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 lg:w-14 h-12 lg:h-14 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full items-center justify-center text-white hover:bg-white/20 transition-all duration-300 shadow-2xl"
           >
             <ChevronRight size={24} />
           </motion.button>
 
           {/* Assets Grid */}
-          <div className="grid lg:grid-cols-3 gap-8 px-20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 px-0 sm:px-6 lg:px-20">
             {assets.map((asset, index) => (
               <motion.div
                 key={asset.id}
@@ -148,7 +148,7 @@ const TrendingAssetsSection: React.FC = () => {
                 <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden hover:border-white/20 transition-all duration-500 shadow-2xl">
                   {/* Card Header with Gradient */}
                   <div
-                    className={`relative h-80 bg-gradient-to-br ${asset.gradient} overflow-hidden`}
+                    className={`relative h-56 sm:h-64 lg:h-80 bg-gradient-to-br ${asset.gradient} overflow-hidden`}
                   >
                     {/* Animated Background Pattern */}
                     <div className="absolute inset-0 opacity-20">
@@ -213,7 +213,7 @@ const TrendingAssetsSection: React.FC = () => {
                   </div>
 
                   {/* Card Content */}
-                  <div className="p-8">
+                  <div className="p-6 sm:p-8">
                     {/* Category Badge */}
                     <div className="mb-6">
                       <span
@@ -225,12 +225,12 @@ const TrendingAssetsSection: React.FC = () => {
                     </div>
 
                     {/* Title */}
-                    <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all duration-300">
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-400 group-hover:bg-clip-text transition-all duration-300">
                       {asset.title}
                     </h3>
 
                     {/* Author */}
-                    <p className="text-gray-300 text-lg mb-6">
+                    <p className="text-gray-300 text-base sm:text-lg mb-6">
                       by{" "}
                       <span className="text-white font-medium">
                         {asset.author}
@@ -240,10 +240,10 @@ const TrendingAssetsSection: React.FC = () => {
                     {/* Price Section */}
                     <div className="mb-8">
                       <div className="flex items-baseline gap-3 mb-2">
-                        <span className="text-3xl font-bold text-white">
+                        <span className="text-2xl sm:text-3xl font-bold text-white">
                           {asset.price}
                         </span>
-                        <span className="text-gray-400 text-lg">
+                        <span className="text-gray-400 text-base sm:text-lg">
                           {asset.usdPrice}
                         </span>
                       </div>
@@ -261,7 +261,7 @@ const TrendingAssetsSection: React.FC = () => {
                     <motion.button
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
-                      className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-blue-500/25 relative overflow-hidden group"
+                      className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white py-3 sm:py-4 rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 shadow-2xl hover:shadow-blue-500/25 relative overflow-hidden group"
                     >
                       <span className="relative z-10 flex items-center justify-center gap-2">
                         <Zap className="w-5 h-5" />
