@@ -50,7 +50,7 @@ const TrendingAssetsSection: React.FC = () => {
     },
     {
       id: 3,
-      title: "Crypto Trading Guide 2024",
+      title: "Crypto Trading 2025",
       author: "TradingPro",
       price: "1.2 BDAG",
       usdPrice: "$570",
